@@ -64,7 +64,7 @@ export function Sidebar({
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
           All Services Live
         </div>
-        <div className="mt-1.5 text-[10px] text-slate-400">Real backends connected on :8000</div>
+        <div className="mt-1.5 text-[10px] text-slate-400">Unified Cloud AI Engine</div>
       </div>
     </aside>
   );

@@ -93,7 +93,7 @@ export function OutcomesView() {
           <h3 className="font-display text-base font-semibold text-slate-100">Root-cause aggregation</h3>
           <p className="mt-1 text-xs text-slate-500">Why customers are churning, by frequency</p>
           <div className="mt-4 space-y-3">
-            {agg?.by_root_cause.length ? (
+            {agg?.by_root_cause && agg.by_root_cause.length > 0 ? (
               agg.by_root_cause.map((rc, i) => {
                 const m = featureMeta(rc.feature);
                 const maxCount = agg.by_root_cause[0].count || 1;
@@ -127,7 +127,7 @@ export function OutcomesView() {
           <h3 className="font-display text-base font-semibold text-slate-100">Action performance</h3>
           <p className="mt-1 text-xs text-slate-500">Success rate per recommended action</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {agg && Object.keys(agg.by_action).length ? (
+            {agg?.by_action && Object.keys(agg.by_action).length > 0 ? (
               (['guided_tutorial', 'proactive_nudge', 'human_handoff', 'incentive'] as const)
                 .filter((a) => agg.by_action[a])
                 .map((a, i) => {
@@ -257,14 +257,16 @@ export function OutcomesView() {
   );
 }
 
-function computeSuccessRate(byAction: AggregateResponse['by_action']): number {
+function computeSuccessRate(byAction?: AggregateResponse['by_action']): number {
+  if (!byAction) return 0;
   let count = 0;
   let success = 0;
   for (const a of Object.keys(byAction)) {
-    // We only have aggregates; approximate from resolved counts via success_rate * count.
     const stat = byAction[a];
-    count += stat.count;
-    success += stat.success_rate * stat.count;
+    if (stat) {
+      count += stat.count;
+      success += stat.success_rate * stat.count;
+    }
   }
   return count ? success / count : 0;
 }

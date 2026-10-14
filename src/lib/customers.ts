@@ -70,11 +70,13 @@ export const customers: Customer[] = [
   } as Customer;
 });
 
+import { API_BASE } from './apiConfig';
+
 export let liveCustomersCache: Customer[] = [...customers];
 
 export async function fetchCustomers(): Promise<Customer[]> {
   try {
-    const res = await fetch('http://localhost:8000/api/customers');
+    const res = await fetch(`${API_BASE}/api/customers`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (Array.isArray(data) && data.length > 0) {

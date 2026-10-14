@@ -23,6 +23,7 @@ import { Badge, Card, Spinner, ThinkingDots } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { ShapScene3D } from '@/components/views/ShapScene3D';
 import type { Attribution, KnowledgeResponse, PolicyDecision, RiskScoreResponse } from '@/lib/types';
+import { API_BASE } from '@/lib/apiConfig';
 
 type Phase = 'idle' | 'risk' | 'knowledge' | 'policy' | 'done';
 
@@ -602,7 +603,7 @@ function PolicyPanel({
               <div className="mt-2 flex gap-2">
                 <button
                   onClick={() => {
-                    fetch('http://localhost:8000/rl/feedback', {
+                    fetch(`${API_BASE}/rl/feedback`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
@@ -618,7 +619,7 @@ function PolicyPanel({
                 </button>
                 <button
                   onClick={() => {
-                    fetch('http://localhost:8000/rl/feedback', {
+                    fetch(`${API_BASE}/rl/feedback`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({

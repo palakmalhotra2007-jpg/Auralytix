@@ -3,6 +3,7 @@ import { Cpu, Gauge, FileText, Server, Zap, Activity, Check, XCircle, RefreshCw 
 import { RISK_MODEL_VERSION } from '@/lib/riskEngine';
 import { KNOWLEDGE_MODEL_VERSION } from '@/lib/knowledgeAssistant';
 import { POLICY_MODEL_VERSION } from '@/lib/actionPolicy';
+import { API_BASE } from '@/lib/apiConfig';
 import { Card, SectionTitle, Spinner } from '@/components/ui/Card';
 
 interface LiveServiceStatus {
@@ -27,7 +28,7 @@ const SERVICES_CONFIG: Omit<LiveServiceStatus, 'healthy' | 'latencyMs' | 'lastCh
     key: 'risk',
     name: 'Risk & Behavior Engine',
     endpoint: '/shap/risk/score',
-    healthUrl: 'http://localhost:8000/shap/risk/score',
+    healthUrl: `${API_BASE}/shap/risk/score`,
     method: 'POST',
     model: RISK_MODEL_VERSION,
     icon: Gauge,
@@ -38,7 +39,7 @@ const SERVICES_CONFIG: Omit<LiveServiceStatus, 'healthy' | 'latencyMs' | 'lastCh
     key: 'knowledge',
     name: 'Knowledge Assistant',
     endpoint: '/rag/knowledge/respond',
-    healthUrl: 'http://localhost:8000/rag/knowledge/respond',
+    healthUrl: `${API_BASE}/rag/knowledge/respond`,
     method: 'POST',
     model: KNOWLEDGE_MODEL_VERSION,
     icon: FileText,
@@ -49,7 +50,7 @@ const SERVICES_CONFIG: Omit<LiveServiceStatus, 'healthy' | 'latencyMs' | 'lastCh
     key: 'policy',
     name: 'Action Policy & Feedback Loop',
     endpoint: '/policy/decide',
-    healthUrl: 'http://localhost:8000/policy/decide',
+    healthUrl: `${API_BASE}/policy/decide`,
     method: 'POST',
     model: POLICY_MODEL_VERSION,
     icon: Cpu,
@@ -60,12 +61,12 @@ const SERVICES_CONFIG: Omit<LiveServiceStatus, 'healthy' | 'latencyMs' | 'lastCh
     key: 'orchestrator',
     name: 'Unified Backend',
     endpoint: '/health',
-    healthUrl: 'http://localhost:8000/health',
+    healthUrl: `${API_BASE}/health`,
     method: 'GET',
     model: 'orchestrator v0.4',
     icon: Server,
     accent: 'text-violet-300',
-    desc: 'FastAPI backend sequencing P1 → P2 → P3 → persistence and exposing results to the dashboard.',
+    desc: 'PulseIQ Unified API sequencing P1 → P2 → P3 → persistence and exposing results to the dashboard.',
   },
 ];
 
@@ -310,7 +311,7 @@ export function HealthView() {
       <Card className="p-5">
         <h3 className="font-display text-base font-semibold text-slate-100">Integration notes</h3>
         <ul className="mt-3 space-y-2.5 text-sm text-slate-400">
-          <li className="flex gap-2"><span className="text-emerald-400">•</span> All three AI subsystems (Risk Engine, Knowledge Assistant, Action Policy) call the live FastAPI backend on port 8000.</li>
+          <li className="flex gap-2"><span className="text-emerald-400">•</span> All three AI subsystems (Risk Engine, Knowledge Assistant, Action Policy) are actively connected to the unified API layer.</li>
           <li className="flex gap-2"><span className="text-emerald-400">•</span> Relational persistence is handled by PostgreSQL / SQLAlchemy for accounts, signals, SHAP attributions, and outcomes.</li>
           <li className="flex gap-2"><span className="text-emerald-400">•</span> Amazon S3 stores model artifacts (risk_model.pth, dataset.pkl) and exports audit reports.</li>
           <li className="flex gap-2"><span className="text-emerald-400">•</span> Action choice depends on <em>which</em> attribution drove the risk score: same score from <code className="rounded bg-white/5 px-1 text-pulse-200">onboarding_confusion</code> picks a tutorial, from <code className="rounded bg-white/5 px-1 text-pulse-200">repeated_failures</code> picks a human handoff.</li>

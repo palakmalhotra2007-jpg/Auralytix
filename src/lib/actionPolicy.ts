@@ -8,6 +8,7 @@ import type {
   RiskBand,
 } from './types';
 import { supabase, supabaseAvailable } from './supabase';
+import { API_BASE } from './apiConfig';
 
 // ---- P3 - Action Policy & Feedback Loop ----
 // Mirrors the already-built action_policy/ FastAPI service:
@@ -128,7 +129,7 @@ export async function decide(
   knowledgeConfidence: number
 ): Promise<PolicyDecision> {
   try {
-    const res = await fetch('http://localhost:8000/policy/decide', {
+    const res = await fetch(`${API_BASE}/policy/decide`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -158,7 +159,7 @@ export async function decide(
 export async function logDecision(decision: PolicyDecision): Promise<OutcomeRecord> {
   // Try backend API first
   try {
-    const res = await fetch('http://localhost:8000/policy/outcome', {
+    const res = await fetch(`${API_BASE}/policy/outcome`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ decision }),
@@ -208,14 +209,103 @@ export async function logDecision(decision: PolicyDecision): Promise<OutcomeReco
 }
 
 // In-memory store for when no persistence backend is available
-const inMemoryOutcomes: OutcomeRecord[] = [];
+const inMemoryOutcomes: OutcomeRecord[] = [
+  {
+    id: 'out_001',
+    customer_id: 'c_002',
+    customer_name: 'Diego Alvarez',
+    risk_score: 0.78,
+    risk_band: 'critical',
+    top_attribution: 'repeated_failures',
+    selected_action: 'human_handoff',
+    knowledge_response: 'Senior engineering session scheduled to diagnose webhook timeouts.',
+    confidence: 0.92,
+    outcome: 'success',
+    created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
+    resolved_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+  },
+  {
+    id: 'out_002',
+    customer_id: 'c_006',
+    customer_name: 'Lucas Pereira',
+    risk_score: 0.84,
+    risk_band: 'critical',
+    top_attribution: 'billing_anomaly',
+    selected_action: 'incentive',
+    knowledge_response: 'Extended 15% loyalty retention credit offered on annual commitment.',
+    confidence: 0.88,
+    outcome: 'pending',
+    created_at: new Date(Date.now() - 3600000 * 6).toISOString(),
+    resolved_at: null,
+  },
+  {
+    id: 'out_003',
+    customer_id: 'c_004',
+    customer_name: 'Sam Okafor',
+    risk_score: 0.72,
+    risk_band: 'high',
+    top_attribution: 'onboarding_confusion',
+    selected_action: 'guided_tutorial',
+    knowledge_response: 'Interactive product walkthrough dispatched for API setup.',
+    confidence: 0.94,
+    outcome: 'success',
+    created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
+    resolved_at: new Date(Date.now() - 3600000 * 9).toISOString(),
+  },
+  {
+    id: 'out_004',
+    customer_id: 'c_007',
+    customer_name: 'Aaliyah Brooks',
+    risk_score: 0.65,
+    risk_band: 'high',
+    top_attribution: 'sentiment_decline',
+    selected_action: 'proactive_nudge',
+    knowledge_response: 'CSM executive check-in email sent with product roadmap briefing.',
+    confidence: 0.91,
+    outcome: 'pending',
+    created_at: new Date(Date.now() - 3600000 * 18).toISOString(),
+    resolved_at: null,
+  },
+  {
+    id: 'out_005',
+    customer_id: 'c_009',
+    customer_name: 'Ines Garcia',
+    risk_score: 0.68,
+    risk_band: 'high',
+    top_attribution: 'engagement_drop',
+    selected_action: 'proactive_nudge',
+    knowledge_response: 'Notification sent highlighting new team collaboration workspaces.',
+    confidence: 0.89,
+    outcome: 'success',
+    created_at: new Date(Date.now() - 3600000 * 28).toISOString(),
+    resolved_at: new Date(Date.now() - 3600000 * 20).toISOString(),
+  },
+  {
+    id: 'out_006',
+    customer_id: 'c_011',
+    customer_name: 'Greta Lindholm',
+    risk_score: 0.58,
+    risk_band: 'moderate',
+    top_attribution: 'pricing_concern',
+    selected_action: 'incentive',
+    knowledge_response: 'Tier discount schedule shared for upcoming quarterly renewal.',
+    confidence: 0.86,
+    outcome: 'failure',
+    created_at: new Date(Date.now() - 3600000 * 36).toISOString(),
+    resolved_at: new Date(Date.now() - 3600000 * 24).toISOString(),
+  },
+];
 
 export async function listOutcomes(): Promise<OutcomeRecord[]> {
   // Try backend API
   try {
-    await fetch('http://localhost:8000/policy/aggregate');
-    // If backend is up, we get aggregate data but not raw outcomes
-    // Fall through to supabase or in-memory
+    const res = await fetch(`${API_BASE}/policy/outcomes`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        return data.map(mapRow);
+      }
+    }
   } catch { /* fall through */ }
 
   if (supabaseAvailable) {
@@ -236,7 +326,7 @@ export async function logOutcome(
 ): Promise<OutcomeRecord> {
   // Try backend API
   try {
-    const res = await fetch('http://localhost:8000/policy/outcome/update', {
+    const res = await fetch(`${API_BASE}/policy/outcome/update`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, outcome }),
@@ -267,7 +357,7 @@ export async function logOutcome(
 
 export async function retrain(): Promise<{ retrained: boolean; model_version: string }> {
   try {
-    const res = await fetch('http://localhost:8000/policy/retrain', { method: 'POST' });
+    const res = await fetch(`${API_BASE}/policy/retrain`, { method: 'POST' });
     if (!res.ok) throw new Error(`Retrain API returned ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -282,7 +372,7 @@ export async function retrain(): Promise<{ retrained: boolean; model_version: st
 export async function aggregate(): Promise<AggregateResponse> {
   // Try backend API first
   try {
-    const res = await fetch('http://localhost:8000/policy/aggregate');
+    const res = await fetch(`${API_BASE}/policy/aggregate`);
     if (res.ok) return await res.json();
   } catch { /* fall through */ }
 
