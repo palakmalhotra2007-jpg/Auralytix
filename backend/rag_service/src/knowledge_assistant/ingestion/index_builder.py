@@ -19,7 +19,7 @@ def build_index():
 
     qdrant_host = os.getenv("QDRANT_HOST", "localhost")
     qdrant_port = int(os.getenv("QDRANT_PORT", 6333))
-    collection_name = os.getenv("QDRANT_COLLECTION_NAME", "pulseiq_knowledge")
+    collection_name = os.getenv("QDRANT_COLLECTION_NAME", "auralytix_knowledge")
 
     print(f"Loading and chunking documents from {raw_docs_dir}...")
     chunks = load_and_chunk_documents(raw_docs_dir)

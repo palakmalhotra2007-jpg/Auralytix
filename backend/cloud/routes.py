@@ -85,6 +85,6 @@ def sync_s3_artifacts():
 def get_s3_files():
     """Lists files currently archived in the S3 bucket."""
     return {
-        "bucket": os.getenv("AWS_S3_BUCKET", "pulseiq-cloud-artifacts"),
+        "bucket": os.getenv("AWS_S3_BUCKET", "auralytix-cloud-artifacts"),
         "files": list_s3_files()
     }

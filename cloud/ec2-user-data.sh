@@ -1,13 +1,14 @@
 #!/bin/bash
 # ==============================================================================
-# PulseIQ AWS EC2 Automated Provisioning and Deployment Script
+# Auralytix AWS EC2 Automated Provisioning and Deployment Script
 # Compatible with Amazon Linux 2023, Amazon Linux 2, Ubuntu 22.04 / 24.04 LTS
+# Free Tier Architecture: EC2 (t2.micro / t3.micro), S3 (boto3), RDS PostgreSQL
 # ==============================================================================
 
 set -euo pipefail
 
 echo "=================================================="
-echo " Starting PulseIQ Cloud Deployment on AWS EC2"
+echo " Starting Auralytix Cloud Deployment on AWS EC2"
 echo " Date: $(date)"
 echo "=================================================="
 
@@ -22,7 +23,7 @@ elif command -v apt-get &> /dev/null; then
     apt-get install -y docker.io docker-compose-v2 git curl
 fi
 
-# 2. Enable and Start Docker Service
+# 2. Enable and Start Docker Daemon
 echo "[2/5] Starting and enabling Docker daemon..."
 systemctl enable --now docker
 if id "ec2-user" &>/dev/null; then
@@ -40,21 +41,39 @@ if ! docker compose version &>/dev/null; then
     chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
 fi
 
-# 4. Create deployment workspace
-APP_DIR="/opt/pulseiq"
+# 4. Clone or pull repository
+APP_DIR="/opt/auralytix"
 echo "[4/5] Setting up deployment directory at ${APP_DIR}..."
-mkdir -p "${APP_DIR}"
-cd "${APP_DIR}"
+if [ -d "${APP_DIR}/.git" ]; then
+    echo "Updating existing repository..."
+    cd "${APP_DIR}"
+    git pull origin main || true
+else
+    echo "Cloning Auralytix repository from GitHub..."
+    git clone https://github.com/palakmalhotra2007-jpg/Auralytix.git "${APP_DIR}"
+    cd "${APP_DIR}"
+fi
+
+# Ensure default environment variables exist if not present
+if [ ! -f ".env" ]; then
+    cat << 'EOF' > .env
+DATABASE_URL=postgresql://auralytix_user:auralytix_secure_password@postgres:5432/auralytix_db
+AWS_S3_BUCKET=auralytix-cloud-artifacts
+AWS_REGION=us-east-1
+QDRANT_HOST=qdrant
+QDRANT_PORT=6333
+QDRANT_COLLECTION_NAME=auralytix_knowledge
+EOF
+fi
 
 # 5. Launch containers via Docker Compose
-echo "[5/5] Launching PulseIQ Full-Stack Containers..."
-if [ -f "docker-compose.yml" ]; then
-    docker compose up -d --build
-    echo "=================================================="
-    echo " PulseIQ Cloud Deployment Complete!"
-    echo " Frontend URL: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 || echo 'localhost')"
-    echo " Backend API:  http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 || echo 'localhost'):8000/docs"
-    echo "=================================================="
-else
-    echo "Notice: Place repository files in ${APP_DIR} and run 'docker compose up -d' to start."
-fi
+echo "[5/5] Launching Auralytix Full-Stack Containers (Nginx, React SPA, FastAPI, Qdrant)..."
+docker compose up -d --build
+
+PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 || echo 'localhost')
+
+echo "=================================================="
+echo " Auralytix Cloud Deployment Complete!"
+echo " Frontend URL: http://${PUBLIC_IP}"
+echo " Backend API:  http://${PUBLIC_IP}:8000/docs"
+echo "=================================================="

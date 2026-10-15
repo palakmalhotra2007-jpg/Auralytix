@@ -3,7 +3,7 @@ from typing import List, Optional
 
 
 class RiskRequest(BaseModel):
-    # Existing PulseIQ signal fields (with defaults for Telco payloads)
+    # Existing Auralytix signal fields (with defaults for Telco payloads)
     usage_decline: float = 0.4
     tickets_last30: int = 1
     negative_sentiment: float = 0.35

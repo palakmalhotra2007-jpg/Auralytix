@@ -42,13 +42,13 @@ def load_model():
         _cached_pipeline = joblib.load(MODEL_PATH)
         return _cached_pipeline
     except Exception as e:
-        print(f"[PulseIQ ML] Warning loading model from {MODEL_PATH}: {e}")
+        print(f"[Auralytix ML] Warning loading model from {MODEL_PATH}: {e}")
         return None
 
 
 def map_legacy_features_to_telco(features: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Maps legacy PulseIQ feature dictionary to Telco customer churn dataset columns
+    Maps legacy Auralytix feature dictionary to Telco customer churn dataset columns
     to preserve backward compatibility with existing API contracts.
     """
     usage_decline = float(features.get("usage_decline", 0.4))
@@ -96,6 +96,29 @@ def map_legacy_features_to_telco(features: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+DEFAULT_TELCO_VALUES = {
+    "gender": "Female",
+    "SeniorCitizen": 0,
+    "Partner": "No",
+    "Dependents": "No",
+    "tenure": 12,
+    "PhoneService": "Yes",
+    "MultipleLines": "No",
+    "InternetService": "Fiber optic",
+    "OnlineSecurity": "No",
+    "OnlineBackup": "No",
+    "DeviceProtection": "No",
+    "TechSupport": "No",
+    "StreamingTV": "No",
+    "StreamingMovies": "No",
+    "Contract": "Month-to-month",
+    "PaperlessBilling": "Yes",
+    "PaymentMethod": "Electronic check",
+    "MonthlyCharges": 70.0,
+    "TotalCharges": 840.0,
+}
+
+
 def predict_churn(customer_data: Union[Dict[str, Any], pd.DataFrame]) -> Dict[str, Any]:
     """
     Predicts churn probability and assigns risk category using the saved pipeline.
@@ -103,14 +126,23 @@ def predict_churn(customer_data: Union[Dict[str, Any], pd.DataFrame]) -> Dict[st
     pipeline = load_model()
 
     if isinstance(customer_data, dict):
-        # Detect if input is using legacy features or Telco features
-        if "usage_decline" in customer_data and "Contract" not in customer_data:
-            input_dict = map_legacy_features_to_telco(customer_data)
+        if any(k in customer_data for k in ["usage_decline", "tickets_last30", "negative_sentiment", "feature_dropout", "active_days", "support_delay", "payment_delay"]):
+            mapped = map_legacy_features_to_telco(customer_data)
         else:
-            input_dict = customer_data
-        df = pd.DataFrame([input_dict])
+            mapped = dict(customer_data)
+
+        # Merge with defaults so all trained pipeline columns are guaranteed present
+        full_record = dict(DEFAULT_TELCO_VALUES)
+        full_record.update(mapped)
+        if "TotalCharges" not in mapped or mapped["TotalCharges"] is None:
+            full_record["TotalCharges"] = round(float(full_record["tenure"]) * float(full_record["MonthlyCharges"]), 2)
+
+        df = pd.DataFrame([full_record])
     else:
         df = customer_data.copy()
+        for col, default_val in DEFAULT_TELCO_VALUES.items():
+            if col not in df.columns:
+                df[col] = default_val
 
     # If TotalCharges is string, coerce to numeric
     if "TotalCharges" in df.columns:
@@ -129,7 +161,7 @@ def predict_churn(customer_data: Union[Dict[str, Any], pd.DataFrame]) -> Dict[st
                 "model_status": "fitted_pipeline",
             }
         except Exception as e:
-            print(f"[PulseIQ ML] Inference error through pipeline: {e}")
+            print(f"[Auralytix ML] Inference error through pipeline: {e}")
 
     # Fallback heuristic if model is not yet trained/available on disk
     tenure = float(df.get("tenure", [12])[0])

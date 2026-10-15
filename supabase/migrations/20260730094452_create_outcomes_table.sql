@@ -1,5 +1,5 @@
 /*
-# PulseIQ: outcomes table (feedback loop persistence)
+# Auralytix: outcomes table (feedback loop persistence)
 
 1. Purpose
    Stores every action-policy decision and its eventual outcome so the

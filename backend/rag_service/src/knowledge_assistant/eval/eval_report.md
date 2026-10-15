@@ -32,13 +32,13 @@
 **Confidence:** 0.90
 
 **Response:**
-> To connect your PulseIQ account to Slack and receive alerts, you can follow these steps: 
+> To connect your Auralytix account to Slack and receive alerts, you can follow these steps: 
 > 
 > 1. Navigate to **Settings > Integrations** from the left-hand navigation menu, as described in [Setting up Third-Party Integrations].
 > 2. Find **Slack** under the "Communication" category and click **"Connect"**.
-> 3. You will be redirected to Slack's authorization page, where you should review the permissions PulseIQ is requesting.
-> 4. Select the Slack channel where you want PulseIQ alerts to be sent and click **"Allow"**.
-> 5. After being redirected back to PulseIQ, the Slack integration status should show as "Active".
+> 3. You will be redirected to Slack's authorization page, where you should review the permissions Auralytix is requesting.
+> 4. Select the Slack channel where you want Auralytix alerts to be sent and click **"Allow"**.
+> 5. After being redirected back to Auralytix, the Slack integration status should show as "Active".
 > 6. Click on the gear icon next to the active Slack integration to configure alert routing, allowing you to create rules for when notifications are sent to your specified Slack channel.
 > 
 > This process is outlined in more detail in [Setting up Third-Party Integrations], specifically in the section "Connecting to Slack (Example)".
@@ -52,14 +52,14 @@
 **Confidence:** 0.90
 
 **Response:**
-> According to [Understanding the PulseIQ Dashboard], the PulseIQ Dashboard has a modular architecture and allows customization. Every widget on the dashboard can be resized or moved using a drag-and-drop interface. 
+> According to [Understanding the Auralytix Dashboard], the Auralytix Dashboard has a modular architecture and allows customization. Every widget on the dashboard can be resized or moved using a drag-and-drop interface. 
 > 
 > To view error rates, you can look at the Overview Ribbon, which displays top-level metrics, including the System Error Rate. This metric is color-coded based on custom threshold settings. 
 > 
 > Additionally, you can add new widgets to the dashboard by clicking the "+ Add Widget" button in the bottom right corner to create a customized view that suits your needs as a DevOps engineer.
 
 **Grounded:** True | **Hallucination:** False
-**Reason:** The LLM's answer is supported by the provided context, specifically the sections 'Understanding the PulseIQ Dashboard' and 'Customizing Your View', which describe the dashboard's modular architecture, drag-and-drop interface, and the Overview Ribbon's display of system error rates.
+**Reason:** The LLM's answer is supported by the provided context, specifically the sections 'Understanding the Auralytix Dashboard' and 'Customizing Your View', which describe the dashboard's modular architecture, drag-and-drop interface, and the Overview Ribbon's display of system error rates.
 
 ---
 
@@ -101,7 +101,7 @@
 **Confidence:** 0.90
 
 **Response:**
-> According to [Setting up Third-Party Integrations], PulseIQ offers native integrations with over 50 popular platforms, but it does not explicitly mention Microsoft Teams as one of the integrated platforms. However, it does mention that if a native integration is not available, you can use PulseIQ Webhooks to define custom endpoints and build custom automations with tools like Zapier or Make. Therefore, while there may not be a native integration with Microsoft Teams, you may still be able to integrate with it using Webhooks.
+> According to [Setting up Third-Party Integrations], Auralytix offers native integrations with over 50 popular platforms, but it does not explicitly mention Microsoft Teams as one of the integrated platforms. However, it does mention that if a native integration is not available, you can use Auralytix Webhooks to define custom endpoints and build custom automations with tools like Zapier or Make. Therefore, while there may not be a native integration with Microsoft Teams, you may still be able to integrate with it using Webhooks.
 
 **Grounded:** True | **Hallucination:** False
 **Reason:** The LLM's answer is supported by the context, which mentions native integrations with specific platforms and the possibility of using Webhooks for custom integrations.
@@ -152,11 +152,11 @@
 
 ---
 
-### Q: Does PulseIQ have a mobile app for iOS? (unanswerable)
+### Q: Does Auralytix have a mobile app for iOS? (unanswerable)
 **Confidence:** 0.75
 
 **Response:**
-> I do not have enough information to answer that. The provided context documents ([Understanding the PulseIQ Dashboard], [FAQ: How to Reset Your Password], [Setting up Third-Party Integrations]) do not mention a mobile app for iOS.
+> I do not have enough information to answer that. The provided context documents ([Understanding the Auralytix Dashboard], [FAQ: How to Reset Your Password], [Setting up Third-Party Integrations]) do not mention a mobile app for iOS.
 
 **Grounded:** True | **Hallucination:** False
 **Reason:** The LLM's answer is grounded because it explicitly states it cannot answer the question due to lack of information in the provided context, and does not make any unsupported claims or provide unverified information.

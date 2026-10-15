@@ -7,7 +7,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 load_dotenv()
 
 # Resolve local SQLite database file path as fallback if DATABASE_URL is not set
-DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "pulseiq.db"
+DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "auralytix.db"
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH}")
 
 # Fix postgresql:// URI scheme if starting with postgres:// (e.g., from some cloud providers)

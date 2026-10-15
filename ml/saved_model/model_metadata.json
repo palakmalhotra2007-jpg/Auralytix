@@ -1,0 +1,34 @@
+{
+  "model_type": "LogisticRegression",
+  "target": "Churn",
+  "numeric_features": [
+    "tenure",
+    "MonthlyCharges",
+    "TotalCharges"
+  ],
+  "categorical_features": [
+    "gender",
+    "SeniorCitizen",
+    "Partner",
+    "Dependents",
+    "PhoneService",
+    "MultipleLines",
+    "InternetService",
+    "OnlineSecurity",
+    "OnlineBackup",
+    "DeviceProtection",
+    "TechSupport",
+    "StreamingTV",
+    "StreamingMovies",
+    "Contract",
+    "PaperlessBilling",
+    "PaymentMethod"
+  ],
+  "metrics": {
+    "accuracy": 0.7381,
+    "precision": 0.5043,
+    "recall": 0.7834,
+    "f1_score": 0.6136,
+    "roc_auc": 0.8415
+  }
+}

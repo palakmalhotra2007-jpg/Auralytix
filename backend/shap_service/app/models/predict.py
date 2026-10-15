@@ -34,7 +34,7 @@ try:
         )
         model.eval()
 except Exception as e:
-    print(f"[PulseIQ Model] Legacy torch model note: {e}")
+    print(f"[Auralytix Model] Legacy torch model note: {e}")
 
 
 def predict_risk(customer_features):
@@ -64,7 +64,7 @@ def predict_risk(customer_features):
             res = predict_churn(features_dict)
             return float(res["churn_probability"])
         except Exception as e:
-            print(f"[PulseIQ Model] Inference error via ml.inference: {e}")
+            print(f"[Auralytix Model] Inference error via ml.inference: {e}")
 
     if model is not None and scaler is not None:
         try:
@@ -75,7 +75,7 @@ def predict_risk(customer_features):
                 risk_score = model(tensor)
             return float(risk_score.item())
         except Exception as e:
-            print(f"[PulseIQ Model] Legacy torch inference error: {e}")
+            print(f"[Auralytix Model] Legacy torch inference error: {e}")
 
     # Fallback heuristic
     return float(min(0.95, max(0.05, features_dict.get("usage_decline", 0.5) * 0.8 + 0.1)))

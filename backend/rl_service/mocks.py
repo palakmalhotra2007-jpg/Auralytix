@@ -84,7 +84,7 @@ class KnowledgeAssistantClient:
             "Content-Type": "application/json"
         }
 
-        system_prompt = "You are a customer support knowledge assistant for PulseIQ. Provide a brief, helpful 1-2 sentence response to the user's issue."
+        system_prompt = "You are a customer support knowledge assistant for Auralytix. Provide a brief, helpful 1-2 sentence response to the user's issue."
 
         data = {
             "model": "llama-3.1-8b-instant",

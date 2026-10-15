@@ -63,7 +63,7 @@ def retrieve(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
     Falls back to local document search if Qdrant is unavailable.
     """
     load_dotenv()
-    collection_name = os.getenv("QDRANT_COLLECTION_NAME", "pulseiq_knowledge")
+    collection_name = os.getenv("QDRANT_COLLECTION_NAME", "auralytix_knowledge")
 
     try:
         embedder = get_embedder()

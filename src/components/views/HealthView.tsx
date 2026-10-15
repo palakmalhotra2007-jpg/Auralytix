@@ -66,7 +66,7 @@ const SERVICES_CONFIG: Omit<LiveServiceStatus, 'healthy' | 'latencyMs' | 'lastCh
     model: 'orchestrator v0.4',
     icon: Server,
     accent: 'text-violet-300',
-    desc: 'PulseIQ Unified API sequencing P1 → P2 → P3 → persistence and exposing results to the dashboard.',
+    desc: 'Auralytix Unified API sequencing P1 → P2 → P3 → persistence and exposing results to the dashboard.',
   },
 ];
 
@@ -128,7 +128,7 @@ export function HealthView() {
       <SectionTitle
         eyebrow="System health"
         title="Live subsystem status & endpoint map"
-        desc="PulseIQ is three AI subsystems plus an orchestration layer. Status is auto-detected from live health checks against the backend."
+        desc="Auralytix is three AI subsystems plus an orchestration layer. Status is auto-detected from live health checks against the backend."
       />
 
       {/* Architecture diagram */}
@@ -288,7 +288,7 @@ export function HealthView() {
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3.5">
             <div className="text-[11px] text-slate-500">Object Storage</div>
             <div className="mt-1 font-display text-sm font-semibold text-slate-200">Amazon S3</div>
-            <div className="mt-2 text-xs font-mono text-amber-400">pulseiq-artifacts</div>
+            <div className="mt-2 text-xs font-mono text-amber-400">auralytix-artifacts</div>
             <div className="mt-1 text-[11px] text-slate-400">PyTorch models & docs</div>
           </div>
 

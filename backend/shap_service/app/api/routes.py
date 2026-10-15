@@ -14,7 +14,7 @@ if str(ROOT_DIR) not in sys.path:
 try:
     from ml.inference import predict_churn
 except Exception as e:
-    print(f"[PulseIQ API] Notice: Could not import ml.inference directly: {e}")
+    print(f"[Auralytix API] Notice: Could not import ml.inference directly: {e}")
     predict_churn = None
 
 try:
@@ -31,7 +31,7 @@ FEEDBACK_FILE = SERVICE_DIR / "feedback.csv"
 @router.get("/")
 def home():
     return {
-        "message": "PulseIQ Risk & Churn Prediction Engine Running 🚀",
+        "message": "Auralytix Risk & Churn Prediction Engine Running 🚀",
         "model": "Telco Logistic Regression Churn Pipeline",
     }
 
@@ -71,7 +71,7 @@ def risk_score(request: RiskRequest):
             result = explain_customer(features)
             attributions = result.get("attributions", [])
         except Exception as e:
-            print(f"[PulseIQ API] SHAP explainability warning: {e}")
+            print(f"[Auralytix API] SHAP explainability warning: {e}")
 
     if not attributions:
         # Build attributions from customer signals and contract terms

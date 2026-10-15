@@ -25,16 +25,16 @@ from backend.db.seed import seed_database
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize and seed the relational database on application startup
-    print("[PulseIQ Backend] Initializing relational database and AWS cloud connectors...")
+    print("[Auralytix Backend] Initializing relational database and AWS cloud connectors...")
     try:
         seed_database()
     except Exception as e:
-        print(f"[PulseIQ Backend] Warning during DB seed: {e}")
+        print(f"[Auralytix Backend] Warning during DB seed: {e}")
     yield
 
 
 app = FastAPI(
-    title="PulseIQ Unified Cloud API",
+    title="Auralytix Unified Cloud API",
     description="Full-stack AI customer intelligence platform powered by AWS Cloud, PyTorch SHAP, RAG, and RL policy engine.",
     version="2.0.0",
     lifespan=lifespan
@@ -68,7 +68,7 @@ app.include_router(rl_router, prefix="/policy")
 def health():
     return {
         "status": "ok",
-        "message": "Unified PulseIQ Cloud backend is running",
+        "message": "Unified Auralytix Cloud backend is running",
         "cloud_provider": "AWS",
         "database": "Operational"
     }

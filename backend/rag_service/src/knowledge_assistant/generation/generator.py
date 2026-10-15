@@ -46,7 +46,7 @@ class Generator:
 
         # 3. Build the strict system prompt
         system_prompt = (
-            "You are a helpful knowledge assistant for PulseIQ. Your task is to answer the user's question based ONLY on the provided context.\n\n"
+            "You are a helpful knowledge assistant for Auralytix. Your task is to answer the user's question based ONLY on the provided context.\n\n"
             "CRITICAL INSTRUCTIONS:\n"
             "1. You must ONLY use the information from the provided context. Do not use outside or general knowledge.\n"
             "2. If the context does not contain enough information to answer the question, say so explicitly (e.g. 'I do not have enough information to answer that.') instead of guessing or making things up.\n"

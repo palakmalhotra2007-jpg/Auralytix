@@ -1,3 +1,3 @@
 """
-PulseIQ Machine Learning Churn Prediction Module.
+Auralytix Machine Learning Churn Prediction Module.
 """

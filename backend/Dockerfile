@@ -10,14 +10,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install python packages
-COPY requirements.txt /app/requirements.txt
+COPY backend/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend source code
-COPY . /app/backend
+# Copy backend source code, ML models, and data
+COPY backend /app/backend
+COPY ml /app/ml
+COPY data /app/data
 
 # Set environment variables
-ENV PYTHONPATH=/app:/app/backend:/app/backend/rag_service/src:/app/backend/shap_service:/app/backend/rl_service
+ENV PYTHONPATH=/app:/app/backend:/app/backend/rag_service/src:/app/backend/shap_service:/app/backend/rl_service:/app/ml
 ENV HOST=0.0.0.0
 ENV PORT=8000
 

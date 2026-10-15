@@ -1,4 +1,4 @@
-// ---- Shared domain types for the PulseIQ orchestration layer ----
+// ---- Shared domain types for the Auralytix orchestration layer ----
 // These mirror the published schemas of the three subsystems so the
 // frontend can swap mocks for live endpoints with no interface changes.
 

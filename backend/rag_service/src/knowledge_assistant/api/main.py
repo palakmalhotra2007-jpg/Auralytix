@@ -8,7 +8,7 @@ from knowledge_assistant.generation.generator import generate_response
 
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="PulseIQ Knowledge Assistant API")
+app = FastAPI(title="Auralytix Knowledge Assistant API")
 
 app.add_middleware(
     CORSMiddleware,

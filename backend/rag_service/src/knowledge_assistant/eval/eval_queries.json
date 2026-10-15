@@ -8,5 +8,5 @@
     {"category": "borderline", "query": "What is the specific 2FA app I need to use to verify my identity for a full export?"},
     {"category": "unanswerable", "query": "How much does the Enterprise Tier cost?"},
     {"category": "unanswerable", "query": "Can I pay using a wire transfer or just credit cards?"},
-    {"category": "unanswerable", "query": "Does PulseIQ have a mobile app for iOS?"}
+    {"category": "unanswerable", "query": "Does Auralytix have a mobile app for iOS?"}
 ]

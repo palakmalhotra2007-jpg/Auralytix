@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from app.api.routes import router
 
 app = FastAPI(
-    title="PulseIQ Risk Engine",
+    title="Auralytix Risk Engine",
     version="1.0"
 )
 

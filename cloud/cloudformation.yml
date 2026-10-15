@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'PulseIQ Full-Stack AWS Cloud Infrastructure Template (EC2, S3, RDS PostgreSQL, Security Groups, IAM)'
+Description: 'Auralytix Full-Stack AWS Cloud Infrastructure Template (EC2, S3, RDS PostgreSQL, Security Groups, IAM)'
 
 Parameters:
   InstanceType:
@@ -10,7 +10,7 @@ Parameters:
       - 't3.micro'
       - 't3.small'
       - 't3.medium'
-    Description: 'EC2 instance type for running PulseIQ containers (t2.micro / t3.micro are AWS Free Tier eligible)'
+    Description: 'EC2 instance type for running Auralytix containers (t2.micro / t3.micro are AWS Free Tier eligible)'
 
   LatestAmiId:
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
@@ -19,12 +19,18 @@ Parameters:
 
   S3BucketName:
     Type: String
-    Default: 'pulseiq-cloud-artifacts'
-    Description: 'Global unique name for PulseIQ S3 model artifacts and documents bucket'
+    Default: 'auralytix-cloud-artifacts'
+    Description: 'Global unique name for Auralytix S3 model artifacts, knowledge base, and reports bucket'
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Default: 'AuralytixSecurePass123!'
+    Description: 'Master database password for Amazon RDS PostgreSQL'
 
 Resources:
-  # 1. Amazon S3 Bucket for Model Artifacts and Knowledge Base Corpus
-  PulseIQBucket:
+  # 1. Amazon S3 Storage (Model Artifacts, Knowledge Base Docs, Generated Reports & Plots)
+  AuralytixBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: !Ref S3BucketName
@@ -40,8 +46,8 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
-  # 2. IAM Role for EC2 Instance to Access S3
-  PulseIQEC2Role:
+  # 2. IAM Role & Profile for EC2 Instance (boto3 access to S3)
+  AuralytixEC2Role:
     Type: 'AWS::IAM::Role'
     Properties:
       AssumeRolePolicyDocument:
@@ -54,7 +60,7 @@ Resources:
             Action:
               - 'sts:AssumeRole'
       Policies:
-        - PolicyName: PulseIQS3AccessPolicy
+        - PolicyName: AuralytixS3AccessPolicy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -65,26 +71,26 @@ Resources:
                   - 's3:ListBucket'
                   - 's3:DeleteObject'
                 Resource:
-                  - !Sub 'arn:aws:s3:::${PulseIQBucket}'
-                  - !Sub 'arn:aws:s3:::${PulseIQBucket}/*'
+                  - !Sub 'arn:aws:s3:::${AuralytixBucket}'
+                  - !Sub 'arn:aws:s3:::${AuralytixBucket}/*'
 
-  PulseIQInstanceProfile:
+  AuralytixInstanceProfile:
     Type: 'AWS::IAM::InstanceProfile'
     Properties:
       Roles:
-        - !Ref PulseIQEC2Role
+        - !Ref AuralytixEC2Role
 
-  # 3. Security Group for Web Traffic and API
-  PulseIQSecurityGroup:
+  # 3. Security Group for EC2 Web, Backend & SSH Traffic
+  AuralytixSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
-      GroupDescription: 'Allow HTTP, HTTPS, FastAPI, and SSH traffic for PulseIQ'
+      GroupDescription: 'Allow HTTP (80), HTTPS (443), FastAPI (8000), and SSH (22) for Auralytix'
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
-          Description: 'HTTP Web Frontend'
+          Description: 'HTTP Web Frontend & Nginx Reverse Proxy'
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
@@ -94,67 +100,125 @@ Resources:
           FromPort: 8000
           ToPort: 8000
           CidrIp: 0.0.0.0/0
-          Description: 'FastAPI Backend Swagger & API'
+          Description: 'FastAPI Backend Direct & Swagger'
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
           Description: 'SSH Remote Administration'
 
-  # 4. Amazon EC2 Instance
-  PulseIQServer:
+  # 4. Security Group for Amazon RDS PostgreSQL
+  AuralytixRDSSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Allow inbound PostgreSQL traffic from Auralytix EC2 security group'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref AuralytixSecurityGroup
+          Description: 'PostgreSQL ingress from Auralytix EC2 instance'
+
+  # 5. Amazon RDS PostgreSQL Instance (db.t3.micro / db.t4g.micro Free Tier)
+  AuralytixRDSInstance:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBInstanceIdentifier: auralytix-postgres-db
+      AllocatedStorage: '20'
+      DBInstanceClass: 'db.t3.micro'
+      Engine: postgres
+      EngineVersion: '16.3'
+      MasterUsername: auralytix_user
+      MasterUserPassword: !Ref DBPassword
+      DBName: auralytix_db
+      VPCSecurityGroups:
+        - !Ref AuralytixRDSSecurityGroup
+      PubliclyAccessible: false
+      StorageType: gp3
+      DeletionProtection: false
+      Tags:
+        - Key: Name
+          Value: Auralytix-RDS-PostgreSQL
+        - Key: Project
+          Value: Auralytix
+
+  # 6. Amazon EC2 Instance (Hosting Nginx, React SPA, FastAPI, Qdrant)
+  AuralytixServer:
     Type: 'AWS::EC2::Instance'
+    DependsOn: AuralytixRDSInstance
     Properties:
       InstanceType: !Ref InstanceType
       ImageId: !Ref LatestAmiId
-      IamInstanceProfile: !Ref PulseIQInstanceProfile
+      IamInstanceProfile: !Ref AuralytixInstanceProfile
       SecurityGroupIds:
-        - !Ref PulseIQSecurityGroup
+        - !Ref AuralytixSecurityGroup
       BlockDeviceMappings:
         - DeviceName: /dev/xvda
           Ebs:
-            VolumeSize: 20
+            VolumeSize: 25
             VolumeType: gp3
             DeleteOnTermination: true
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          set -e
-          echo "==== Initializing PulseIQ Cloud Node on AWS EC2 ===="
+          set -euo pipefail
+          echo "==== Initializing Auralytix Cloud Node on AWS EC2 ===="
           dnf update -y
-          dnf install -y docker git
+          dnf install -y docker git curl
           systemctl enable --now docker
           usermod -aG docker ec2-user
 
-          # Install Docker Compose Plugin
+          # Install Docker Compose CLI plugin
           mkdir -p /usr/local/lib/docker/cli-plugins
           curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
           chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
-          echo "AWS EC2 Docker provisioning complete!"
+          # Clone Auralytix repository
+          APP_DIR="/opt/auralytix"
+          rm -rf "$${APP_DIR}"
+          git clone https://github.com/palakmalhotra2007-jpg/Auralytix.git "$${APP_DIR}"
+          cd "$${APP_DIR}"
+
+          # Write dynamic environment variables for RDS and S3
+          cat << 'EOF' > .env
+          DATABASE_URL=postgresql://auralytix_user:${DBPassword}@${AuralytixRDSInstance.Endpoint.Address}:5432/auralytix_db
+          AWS_S3_BUCKET=${AuralytixBucket}
+          AWS_REGION=${AWS::Region}
+          QDRANT_HOST=qdrant
+          QDRANT_PORT=6333
+          QDRANT_COLLECTION_NAME=auralytix_knowledge
+          EOF
+
+          # Launch all containers: Nginx + React SPA + FastAPI + Qdrant
+          docker compose up -d --build
+          echo "==== Auralytix Cloud Node is Live! ===="
       Tags:
         - Key: Name
-          Value: PulseIQ-Cloud-Server
+          Value: Auralytix-Cloud-Server
         - Key: Project
-          Value: PulseIQ
+          Value: Auralytix
 
 Outputs:
   ServerPublicIP:
-    Description: 'Public IP of the PulseIQ EC2 Instance'
-    Value: !GetAtt PulseIQServer.PublicIp
+    Description: 'Public IP of the Auralytix EC2 Instance'
+    Value: !GetAtt AuralytixServer.PublicIp
 
   ServerPublicDNS:
-    Description: 'Public DNS of the PulseIQ EC2 Instance'
-    Value: !GetAtt PulseIQServer.PublicDnsName
+    Description: 'Public DNS of the Auralytix EC2 Instance'
+    Value: !GetAtt AuralytixServer.PublicDnsName
 
   FrontendURL:
-    Description: 'Web application URL'
-    Value: !Sub 'http://${PulseIQServer.PublicIp}'
+    Description: 'Auralytix Web Application (Nginx Port 80)'
+    Value: !Sub 'http://${AuralytixServer.PublicIp}'
 
   BackendAPIURL:
-    Description: 'FastAPI Interactive Documentation'
-    Value: !Sub 'http://${PulseIQServer.PublicIp}:8000/docs'
+    Description: 'FastAPI Interactive Documentation (Port 8000)'
+    Value: !Sub 'http://${AuralytixServer.PublicIp}:8000/docs'
+
+  RDSEndpoint:
+    Description: 'Amazon RDS PostgreSQL Endpoint'
+    Value: !GetAtt AuralytixRDSInstance.Endpoint.Address
 
   S3Bucket:
     Description: 'Amazon S3 Artifacts Bucket'
-    Value: !Ref PulseIQBucket
+    Value: !Ref AuralytixBucket

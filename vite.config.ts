@@ -1,16 +1,16 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
-import { pulseiqDevApiMiddleware } from './src/server/devApiServer';
+import { auralytixDevApiMiddleware } from './src/server/devApiServer';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     {
-      name: 'pulseiq-api-server',
+      name: 'auralytix-api-server',
       configureServer(server) {
-        server.middlewares.use(pulseiqDevApiMiddleware());
+        server.middlewares.use(auralytixDevApiMiddleware());
       },
     },
   ],

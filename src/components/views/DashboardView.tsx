@@ -39,7 +39,7 @@ export function DashboardView({ onNavigate }: { onNavigate: (v: ViewKey) => void
       <SectionTitle
         eyebrow="Overview"
         title="Customer intelligence at a glance"
-        desc="PulseIQ continuously scores every customer for churn risk, explains the dominant driver, and recommends a fix."
+        desc="Auralytix continuously scores every customer for churn risk, explains the dominant driver, and recommends a fix."
       />
 
       {/* KPIs */}

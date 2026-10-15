@@ -1,6 +1,6 @@
-# Understanding the PulseIQ Dashboard
+# Understanding the Auralytix Dashboard
 
-The PulseIQ Dashboard is your central hub for monitoring system health, user engagement, and key performance indicators (KPIs) in real-time. Designed with a modular architecture, the dashboard can be customized to suit the specific needs of different team members, from marketers to DevOps engineers.
+The Auralytix Dashboard is your central hub for monitoring system health, user engagement, and key performance indicators (KPIs) in real-time. Designed with a modular architecture, the dashboard can be customized to suit the specific needs of different team members, from marketers to DevOps engineers.
 
 ### Core Components
 

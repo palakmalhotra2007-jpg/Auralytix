@@ -114,7 +114,7 @@ def build_pipeline():
 
 
 def train_and_evaluate(data_path: Path = DEFAULT_DATA_PATH, model_dir: Path = DEFAULT_MODEL_DIR):
-    print(f"[PulseIQ ML] Loading dataset from: {data_path}")
+    print(f"[Auralytix ML] Loading dataset from: {data_path}")
     X, y = load_and_preprocess_raw_data(data_path)
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -123,7 +123,7 @@ def train_and_evaluate(data_path: Path = DEFAULT_DATA_PATH, model_dir: Path = DE
 
     pipeline = build_pipeline()
 
-    print("[PulseIQ ML] Training Logistic Regression model pipeline...")
+    print("[Auralytix ML] Training Logistic Regression model pipeline...")
     pipeline.fit(X_train, y_train)
 
     y_pred = pipeline.predict(X_test)
@@ -136,7 +136,7 @@ def train_and_evaluate(data_path: Path = DEFAULT_DATA_PATH, model_dir: Path = DE
     accuracy = accuracy_score(y_test, y_pred)
 
     print("\n" + "=" * 50)
-    print("      PulseIQ Churn Model Evaluation Results      ")
+    print("      Auralytix Churn Model Evaluation Results      ")
     print("=" * 50)
     print(f"Accuracy:         {accuracy:.4f}")
     print(f"Precision:        {precision:.4f}")
@@ -150,7 +150,7 @@ def train_and_evaluate(data_path: Path = DEFAULT_DATA_PATH, model_dir: Path = DE
     os.makedirs(model_dir, exist_ok=True)
     model_path = model_dir / "churn_pipeline.joblib"
     joblib.dump(pipeline, model_path)
-    print(f"[PulseIQ ML] Saved pipeline to: {model_path}")
+    print(f"[Auralytix ML] Saved pipeline to: {model_path}")
 
     metadata = {
         "model_type": "LogisticRegression",
@@ -169,13 +169,13 @@ def train_and_evaluate(data_path: Path = DEFAULT_DATA_PATH, model_dir: Path = DE
     metadata_path = model_dir / "model_metadata.json"
     with open(metadata_path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
-    print(f"[PulseIQ ML] Saved model metadata to: {metadata_path}")
+    print(f"[Auralytix ML] Saved model metadata to: {metadata_path}")
 
     return pipeline, metadata
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train PulseIQ Telco Churn Logistic Regression Pipeline")
+    parser = argparse.ArgumentParser(description="Train Auralytix Telco Churn Logistic Regression Pipeline")
     parser.add_argument("--data-path", type=str, default=str(DEFAULT_DATA_PATH), help="Path to input CSV")
     parser.add_argument("--model-dir", type=str, default=str(DEFAULT_MODEL_DIR), help="Output directory for saved model")
     args = parser.parse_args()

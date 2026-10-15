@@ -13,7 +13,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   }
 
   componentDidCatch(error: Error, info: unknown) {
-    console.error('PulseIQ render error:', error, info);
+    console.error('Auralytix render error:', error, info);
   }
 
   render() {

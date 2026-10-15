@@ -1,6 +1,6 @@
 # FAQ: How to Export Your Data
 
-We believe your data belongs to you. PulseIQ provides comprehensive data export capabilities, allowing you to easily download your analytics, customer logs, and system metrics at any time.
+We believe your data belongs to you. Auralytix provides comprehensive data export capabilities, allowing you to easily download your analytics, customer logs, and system metrics at any time.
 
 ### Exporting from the Dashboard
 To export data from a specific dashboard view:

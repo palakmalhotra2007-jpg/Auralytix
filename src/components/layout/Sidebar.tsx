@@ -28,7 +28,7 @@ export function Sidebar({
           <span className="absolute inset-0 rounded-xl animate-pulseGlow" />
         </div>
         <div className="leading-tight">
-          <div className="font-display text-lg font-bold text-slate-50 tracking-wide">PulseIQ</div>
+          <div className="font-display text-lg font-bold text-slate-50 tracking-wide">Auralytix</div>
           <div className="text-[10px] uppercase tracking-[0.18em] text-cyan-400/80">Autonomous AI</div>
         </div>
       </div>
@@ -77,7 +77,7 @@ export function MobileNav({ view, onNavigate }: { view: ViewKey; onNavigate: (v:
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400 to-violet-500">
           <Activity size={14} className="text-white" />
         </div>
-        <span className="font-display text-sm font-bold text-slate-50">PulseIQ</span>
+        <span className="font-display text-sm font-bold text-slate-50">Auralytix</span>
       </div>
       {NAV.map((item) => {
         const active = view === item.key;

@@ -248,7 +248,7 @@ function computeAggregates() {
   };
 }
 
-export function pulseiqDevApiMiddleware(): Connect.NextHandleFunction {
+export function auralytixDevApiMiddleware(): Connect.NextHandleFunction {
   return async (req, res, next) => {
     const url = req.url?.split('?')[0] || '';
     const method = req.method || 'GET';
@@ -266,7 +266,7 @@ export function pulseiqDevApiMiddleware(): Connect.NextHandleFunction {
     if (url === '/health') {
       return json(res, 200, {
         status: 'ok',
-        message: 'PulseIQ Unified API Engine Running',
+        message: 'Auralytix Unified API Engine Running',
         cloud_provider: 'AWS',
         database: 'Operational',
         models: {
@@ -431,7 +431,7 @@ export function pulseiqDevApiMiddleware(): Connect.NextHandleFunction {
     if (url === '/cloud/status') {
       return json(res, 200, {
         cloud_provider: 'AWS (Free Tier Eligible)',
-        s3: { status: 'connected', bucket: 'pulseiq-cloud-artifacts' },
+        s3: { status: 'connected', bucket: 'auralytix-cloud-artifacts' },
         rds: { status: 'connected', engine: 'PostgreSQL 16' },
         status: 'healthy'
       });
