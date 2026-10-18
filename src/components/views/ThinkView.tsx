@@ -346,7 +346,7 @@ function RiskPanel({
                 {fmtPct(risk.risk_score, 1)}
               </div>
               <p className="mt-1 text-xs text-slate-500">
-                Top driver: <span className="text-slate-300">{featureMeta(risk.attributions[0].feature).label}</span>
+                Top driver: <span className="text-slate-300">{featureMeta(risk.attributions?.[0]?.feature).label}</span>
               </p>
             </div>
           </div>

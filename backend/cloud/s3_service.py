@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -106,3 +106,22 @@ def list_s3_files(prefix: str = "", bucket_name: Optional[str] = None) -> List[s
             print(f"[AWS S3] List error: {e}")
             return []
     return [f"models/risk_model.pth", f"docs/doc_dashboard.md", f"docs/faq_reset_password.md"]
+
+
+def upload_model_artifacts(model_dir: Union[str, Path], bucket_name: Optional[str] = None) -> Dict[str, bool]:
+    """
+    Uploads all model artifacts in model_dir (pipeline, metadata, background samples) to S3 under models/ prefix.
+    """
+    model_dir_path = Path(model_dir)
+    results = {}
+    if not model_dir_path.exists():
+        print(f"[AWS S3] Model directory does not exist: {model_dir_path}")
+        return results
+
+    for item in model_dir_path.iterdir():
+        if item.is_file() and not item.name.startswith("."):
+            s3_key = f"models/{item.name}"
+            success = upload_file_to_s3(str(item), s3_key, bucket_name)
+            results[item.name] = success
+    return results
+

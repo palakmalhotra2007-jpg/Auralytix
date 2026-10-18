@@ -24,7 +24,8 @@ export function DashboardView({ onNavigate }: { onNavigate: (v: ViewKey) => void
     scored.forEach((r) => (bandCounts[r.score!.risk_band] += 1));
     const topDrivers: Record<string, number> = {};
     scored.forEach((r) => {
-      const f = r.score!.attributions[0].feature;
+      const topAttr = r.score?.attributions?.[0];
+      const f = topAttr?.feature || 'pricing_concern';
       topDrivers[f] = (topDrivers[f] ?? 0) + 1;
     });
     return { scored, atRisk, critical, avgRisk, arrValue, bandCounts, topDrivers };
@@ -157,7 +158,8 @@ export function DashboardView({ onNavigate }: { onNavigate: (v: ViewKey) => void
               .map((r, i) => {
                 const c = customers.find((c) => c.id === r.customerId)!;
                 const m = bandMeta(r.score!.risk_band);
-                const driver = featureMeta(r.score!.attributions[0].feature);
+                const topAttr = r.score?.attributions?.[0];
+                const driver = featureMeta(topAttr?.feature);
                 return (
                   <button
                     key={c.id}

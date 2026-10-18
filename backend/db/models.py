@@ -21,7 +21,10 @@ class CustomerModel(Base):
     joined_days = Column(Integer, default=30)
     last_active_days = Column(Integer, default=1)
     signals_json = Column(Text, nullable=False, default="[]")
+    risk_score = Column(Float, nullable=True, default=0.5)
+    risk_band = Column(String(32), nullable=True, default="moderate")
     created_at = Column(String(64), default=utc_now_iso)
+
 
 
 class RiskScoreModel(Base):

@@ -84,13 +84,13 @@ export async function analyze(
   return { decision, outcomeId: record.id };
 }
 
-function buildQuery(attr: { feature: string; label: string }, customer: { tier: string }) {
-  const f = attr.feature;
-  const tierHint = customer.tier === 'Enterprise' ? ' for an Enterprise account' : '';
+function buildQuery(attr?: { feature?: string; label?: string } | null, customer?: { tier?: string } | null) {
+  const f = attr?.feature || 'pricing_concern';
+  const tierHint = customer?.tier === 'Enterprise' ? ' for an Enterprise account' : '';
   if (f === 'onboarding_confusion') return `onboarding_confusion stalled onboarding${tierHint}`;
   if (f === 'repeated_failures') return `repeated_failures support escalation${tierHint}`;
   if (f === 'pricing_concern') return `pricing_concern downgrade risk${tierHint}`;
   if (f === 'sentiment_decline') return `sentiment_decline low sentiment recovery${tierHint}`;
   if (f === 'engagement_drop') return `engagement_drop dormant feature nudge${tierHint}`;
-  return attr.label;
+  return attr?.label || 'customer retention analysis';
 }

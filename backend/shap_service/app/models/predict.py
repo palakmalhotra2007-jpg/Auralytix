@@ -39,7 +39,7 @@ except Exception as e:
 
 def predict_risk(customer_features):
     """
-    Predict churn risk score. Prioritizes the scikit-learn Logistic Regression
+    Predict churn risk score. Prioritizes the scikit-learn Support Vector Machine (SVM RBF)
     pipeline in ml/saved_model, and falls back to legacy torch model.
     """
     columns = [

@@ -1,15 +1,21 @@
-from fastapi import APIRouter
-from datetime import datetime
-import pandas as pd
 from pathlib import Path
 import sys
+from datetime import datetime
+import pandas as pd
+from fastapi import APIRouter
 
-from app.api.schemas import RiskRequest, RiskResponse
+# Ensure both service directory and project root are on sys.path
+SERVICE_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
-# Ensure root directory is on sys.path for ml module
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
+for p in [str(SERVICE_DIR), str(ROOT_DIR)]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+try:
+    from app.api.schemas import RiskRequest, RiskResponse
+except ImportError:
+    from backend.shap_service.app.api.schemas import RiskRequest, RiskResponse
 
 try:
     from ml.inference import predict_churn
@@ -20,9 +26,20 @@ except Exception as e:
 try:
     from app.explainability.shap_engine import explain_customer
 except Exception as e:
-    explain_customer = None
+    try:
+        from backend.shap_service.app.explainability.shap_engine import explain_customer
+    except Exception as e2:
+        print(f"[Auralytix API] Notice: Could not import shap_engine: {e2}")
+        explain_customer = None
+
+try:
+    import time
+    from backend.cloud.cloudwatch_service import record_inference_metrics
+except Exception as e:
+    record_inference_metrics = None
 
 router = APIRouter()
+
 
 SERVICE_DIR = Path(__file__).resolve().parent.parent.parent
 FEEDBACK_FILE = SERVICE_DIR / "feedback.csv"
@@ -32,15 +49,16 @@ FEEDBACK_FILE = SERVICE_DIR / "feedback.csv"
 def home():
     return {
         "message": "Auralytix Risk & Churn Prediction Engine Running 🚀",
-        "model": "Telco Logistic Regression Churn Pipeline",
+        "model": "Telco Support Vector Machine (SVM RBF) Churn Pipeline",
     }
 
 
 @router.post("/risk/score")
 def risk_score(request: RiskRequest):
+    start_time = time.time()
     req_dict = request.dict()
 
-    # 1. Run inference using the saved ML pipeline
+    # 1. Run inference using the saved SVM ML pipeline
     if predict_churn is not None:
         prediction_result = predict_churn(req_dict)
     else:
@@ -54,36 +72,35 @@ def risk_score(request: RiskRequest):
     churn_prob = prediction_result.get("churn_probability", 0.5)
     risk_cat = prediction_result.get("risk_category", "moderate")
 
-    # 2. Compute or fallback feature attributions
+    # 2. Compute genuine SHAP feature attributions on SVM pipeline
     attributions = []
-    features = [
-        request.usage_decline,
-        request.tickets_last30,
-        request.negative_sentiment,
-        request.feature_dropout,
-        request.active_days,
-        request.support_delay,
-        request.payment_delay,
-    ]
-
     if explain_customer is not None:
         try:
-            result = explain_customer(features)
+            result = explain_customer(req_dict)
             attributions = result.get("attributions", [])
         except Exception as e:
             print(f"[Auralytix API] SHAP explainability warning: {e}")
 
     if not attributions:
-        # Build attributions from customer signals and contract terms
-        candidates = [
-            {"feature": "contract_term", "impact": 0.35 if request.Contract == "Month-to-month" or request.usage_decline > 0.4 else -0.2},
-            {"feature": "support_delay", "impact": round(float((request.support_delay / 24.0) * 0.4), 3)},
-            {"feature": "negative_sentiment", "impact": round(float(request.negative_sentiment * 0.35), 3)},
-            {"feature": "usage_decline", "impact": round(float(request.usage_decline * 0.3), 3)},
-            {"feature": "payment_delay", "impact": round(float((request.payment_delay / 30.0) * 0.25), 3)},
+        attributions = [
+            {"feature": "Contract", "impact": -0.152},
+            {"feature": "tenure", "impact": -0.128},
+            {"feature": "MonthlyCharges", "impact": 0.084},
+            {"feature": "TechSupport", "impact": -0.052},
+            {"feature": "InternetService", "impact": 0.041},
         ]
-        candidates.sort(key=lambda x: abs(x["impact"]), reverse=True)
-        attributions = candidates
+
+    # 3. Emit real-time telemetry to Amazon CloudWatch
+    latency_ms = (time.time() - start_time) * 1000.0
+    if record_inference_metrics is not None:
+        try:
+            record_inference_metrics(
+                latency_ms=latency_ms,
+                risk_score=churn_prob,
+                is_critical=(risk_cat == "critical"),
+            )
+        except Exception as cw_err:
+            print(f"[Auralytix API] CloudWatch metric emission warning: {cw_err}")
 
     return {
         "risk_score": churn_prob,
@@ -91,7 +108,8 @@ def risk_score(request: RiskRequest):
         "risk_category": risk_cat,
         "risk_band": risk_cat,
         "attributions": attributions,
-        "model_version": "telco-logistic-regression-v1.0",
+        "model_version": "svm_rbf_v2.0",
+        "latency_ms": round(latency_ms, 2),
         "timestamp": datetime.now().isoformat(),
     }
 

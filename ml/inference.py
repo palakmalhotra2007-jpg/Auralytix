@@ -73,26 +73,32 @@ def map_legacy_features_to_telco(features: Dict[str, Any]) -> Dict[str, Any]:
     online_security = "No" if feature_dropout > 0.5 else "Yes"
     payment_method = "Electronic check" if payment_delay > 1 else "Bank transfer (automatic)"
 
+    # Prioritize explicit Telco fields if passed in features dict
+    explicit_contract = features.get("Contract")
+    explicit_tenure = features.get("tenure")
+    explicit_monthly = features.get("MonthlyCharges")
+    explicit_total = features.get("TotalCharges")
+
     return {
-        "gender": features.get("gender", "Female"),
-        "SeniorCitizen": int(features.get("SeniorCitizen", 0)),
-        "Partner": features.get("Partner", "No"),
-        "Dependents": features.get("Dependents", "No"),
-        "tenure": tenure,
-        "PhoneService": features.get("PhoneService", "Yes"),
-        "MultipleLines": features.get("MultipleLines", "No"),
-        "InternetService": internet_service,
-        "OnlineSecurity": online_security,
-        "OnlineBackup": features.get("OnlineBackup", "No"),
-        "DeviceProtection": features.get("DeviceProtection", "No"),
-        "TechSupport": tech_support,
-        "StreamingTV": features.get("StreamingTV", "No"),
-        "StreamingMovies": features.get("StreamingMovies", "No"),
-        "Contract": contract,
-        "PaperlessBilling": features.get("PaperlessBilling", "Yes"),
-        "PaymentMethod": payment_method,
-        "MonthlyCharges": monthly_charges,
-        "TotalCharges": total_charges,
+        "gender": features.get("gender") or "Female",
+        "SeniorCitizen": int(features.get("SeniorCitizen") or 0),
+        "Partner": features.get("Partner") or "No",
+        "Dependents": features.get("Dependents") or "No",
+        "tenure": int(explicit_tenure) if explicit_tenure is not None else tenure,
+        "PhoneService": features.get("PhoneService") or "Yes",
+        "MultipleLines": features.get("MultipleLines") or "No",
+        "InternetService": features.get("InternetService") or internet_service,
+        "OnlineSecurity": features.get("OnlineSecurity") or online_security,
+        "OnlineBackup": features.get("OnlineBackup") or "No",
+        "DeviceProtection": features.get("DeviceProtection") or "No",
+        "TechSupport": features.get("TechSupport") or tech_support,
+        "StreamingTV": features.get("StreamingTV") or "No",
+        "StreamingMovies": features.get("StreamingMovies") or "No",
+        "Contract": explicit_contract or contract,
+        "PaperlessBilling": features.get("PaperlessBilling") or "Yes",
+        "PaymentMethod": features.get("PaymentMethod") or payment_method,
+        "MonthlyCharges": float(explicit_monthly) if explicit_monthly is not None else monthly_charges,
+        "TotalCharges": float(explicit_total) if explicit_total is not None else total_charges,
     }
 
 
@@ -126,15 +132,16 @@ def predict_churn(customer_data: Union[Dict[str, Any], pd.DataFrame]) -> Dict[st
     pipeline = load_model()
 
     if isinstance(customer_data, dict):
-        if any(k in customer_data for k in ["usage_decline", "tickets_last30", "negative_sentiment", "feature_dropout", "active_days", "support_delay", "payment_delay"]):
-            mapped = map_legacy_features_to_telco(customer_data)
+        clean_dict = {k: v for k, v in customer_data.items() if v is not None}
+        if any(k in clean_dict for k in ["usage_decline", "tickets_last30", "negative_sentiment", "feature_dropout", "active_days", "support_delay", "payment_delay"]):
+            mapped = map_legacy_features_to_telco(clean_dict)
         else:
-            mapped = dict(customer_data)
+            mapped = dict(clean_dict)
 
         # Merge with defaults so all trained pipeline columns are guaranteed present
         full_record = dict(DEFAULT_TELCO_VALUES)
-        full_record.update(mapped)
-        if "TotalCharges" not in mapped or mapped["TotalCharges"] is None:
+        full_record.update({k: v for k, v in mapped.items() if v is not None})
+        if "TotalCharges" not in full_record or full_record["TotalCharges"] is None:
             full_record["TotalCharges"] = round(float(full_record["tenure"]) * float(full_record["MonthlyCharges"]), 2)
 
         df = pd.DataFrame([full_record])
@@ -158,7 +165,7 @@ def predict_churn(customer_data: Union[Dict[str, Any], pd.DataFrame]) -> Dict[st
                 "risk_score": round(prob, 4),
                 "risk_category": category,
                 "risk_band": category,
-                "model_status": "fitted_pipeline",
+                "model_status": "svm_rbf_v2.0",
             }
         except Exception as e:
             print(f"[Auralytix ML] Inference error through pipeline: {e}")
@@ -185,5 +192,5 @@ def predict_churn(customer_data: Union[Dict[str, Any], pd.DataFrame]) -> Dict[st
         "risk_score": round(fallback_prob, 4),
         "risk_category": cat,
         "risk_band": cat,
-        "model_status": "untrained_fallback",
+        "model_status": "svm_heuristic_fallback",
     }

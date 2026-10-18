@@ -73,15 +73,40 @@ export function actionMeta(a: ActionType): {
   }
 }
 
-export function featureMeta(feature: string): { label: string; hex: string } {
+export function featureMeta(feature?: string): { label: string; hex: string } {
+  if (!feature) {
+    return { label: 'General Risk', hex: '#64748b' };
+  }
   const map: Record<string, { label: string; hex: string }> = {
     onboarding_confusion: { label: 'Onboarding confusion', hex: '#0ea5e9' },
     repeated_failures: { label: 'Repeated failures', hex: '#f43f5e' },
     pricing_concern: { label: 'Pricing concern', hex: '#f59e0b' },
     sentiment_decline: { label: 'Sentiment decline', hex: '#8b5cf6' },
     engagement_drop: { label: 'Engagement drop', hex: '#06b6d4' },
+    tenure: { label: 'Account Tenure', hex: '#06b6d4' },
+    Contract: { label: 'Contract Commitment', hex: '#f59e0b' },
+    OnlineSecurity: { label: 'Online Security', hex: '#8b5cf6' },
+    TotalCharges: { label: 'Total Charges', hex: '#f43f5e' },
+    TechSupport: { label: 'Tech Support', hex: '#0ea5e9' },
+    InternetService: { label: 'Internet Service', hex: '#10b981' },
+    PaymentMethod: { label: 'Payment Method', hex: '#f59e0b' },
+    PhoneService: { label: 'Phone Service', hex: '#06b6d4' },
+    MultipleLines: { label: 'Multiple Lines', hex: '#8b5cf6' },
+    MonthlyCharges: { label: 'Monthly Charges', hex: '#f43f5e' },
+    PaperlessBilling: { label: 'Paperless Billing', hex: '#0ea5e9' },
+    gender: { label: 'Gender Demographics', hex: '#64748b' },
+    SeniorCitizen: { label: 'Senior Citizen Tier', hex: '#64748b' },
+    Partner: { label: 'Partner Status', hex: '#64748b' },
+    Dependents: { label: 'Dependents Status', hex: '#64748b' },
+    OnlineBackup: { label: 'Online Backup', hex: '#0ea5e9' },
+    DeviceProtection: { label: 'Device Protection', hex: '#06b6d4' },
+    StreamingTV: { label: 'Streaming TV Tier', hex: '#8b5cf6' },
+    StreamingMovies: { label: 'Streaming Movies Tier', hex: '#8b5cf6' },
   };
-  return map[feature] ?? { label: feature, hex: '#64748b' };
+  return map[feature] ?? {
+    label: feature.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    hex: '#64748b',
+  };
 }
 
 export function timeAgo(iso: string | null): string {

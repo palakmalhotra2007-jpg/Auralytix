@@ -97,7 +97,8 @@ export function CustomersView({ onAnalyze }: { onAnalyze: (id: string) => void }
           {list.map(({ customer, score }, i) => {
             const band = score?.risk_band;
             const m = band ? bandMeta(band) : null;
-            const driver = score ? featureMeta(score.attributions[0].feature) : null;
+            const topAttr = score?.attributions?.[0];
+            const driver = topAttr ? featureMeta(topAttr.feature) : null;
             return (
               <button
                 key={customer.id}
@@ -141,7 +142,7 @@ export function CustomersView({ onAnalyze }: { onAnalyze: (id: string) => void }
                     <Brain size={12} /> Analyze
                   </span>
                   <span className="text-slate-500">
-                    {driver && <ActionIcon action={actionFromDriver(score!.attributions[0].feature)} size={15} className="opacity-60 group-hover:opacity-100" />}
+                    {driver && topAttr && <ActionIcon action={actionFromDriver(topAttr.feature)} size={15} className="opacity-60 group-hover:opacity-100" />}
                   </span>
                 </div>
               </button>

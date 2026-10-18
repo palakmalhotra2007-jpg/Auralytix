@@ -16,7 +16,11 @@ from contextlib import asynccontextmanager
 
 from shap_service.app.main import app as shap_app
 from rl_service.api import router as rl_router
-from rag_service.src.knowledge_assistant.api.main import app as rag_app
+try:
+    from rag_service.src.knowledge_assistant.api.main import app as rag_app
+except Exception as _rag_err:
+    rag_app = None
+    print(f"[Auralytix Backend] RAG service optional import skipped: {_rag_err}")
 from backend.db.customer_routes import router as customer_router
 from backend.cloud.routes import router as cloud_router
 from backend.db.seed import seed_database
@@ -55,7 +59,8 @@ app.include_router(customer_router, prefix="/api")
 app.include_router(cloud_router)
 
 # 3. Mount RAG Knowledge Assistant endpoints under /rag
-app.mount("/rag", rag_app)
+if rag_app is not None:
+    app.mount("/rag", rag_app)
 
 # 4. Mount SHAP Risk & Attribution Engine endpoints under /shap
 app.mount("/shap", shap_app)

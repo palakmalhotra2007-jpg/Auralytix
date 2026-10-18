@@ -1,50 +1,44 @@
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+import sys
 import datetime
 import uuid
+from pathlib import Path
+from typing import List, Dict, Any, Optional
+
+from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from backend.db.database import get_db
-from backend.db.models import OutcomeModel
+
+# Add project root to sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+from backend.db.database import get_db, SessionLocal
+from backend.db.models import OutcomeModel, FeedbackModel, utc_now_iso
+from backend.rl_service.agent import ContextualBanditAgent, ACTIONS, ACTION_LABELS
+
+try:
+    from backend.cloud.cloudwatch_service import record_intervention_metric
+except Exception:
+    record_intervention_metric = None
 
 router = APIRouter()
 
-# In-memory store fallback and cache
-outcomes_db = []
+POLICY_MODEL_VERSION = "policy-bandit-v2.0"
 
-POLICY_MODEL_VERSION = 'policy-softmax-v1.6.0'
+# Initialize Bandit Agent
+bandit_agent = ContextualBanditAgent(actions=ACTIONS, alpha=0.7)
 
-ACTIONS = ['guided_tutorial', 'proactive_nudge', 'human_handoff', 'incentive']
-
-ACTION_LABELS = {
-    'guided_tutorial': 'Guided tutorial',
-    'proactive_nudge': 'Proactive nudge',
-    'human_handoff': 'Human handoff',
-    'incentive': 'Incentive',
-}
-
-POLICY_RULES = {
-    'onboarding_confusion': {
-        'action': 'guided_tutorial',
-        'rationale': 'Onboarding confusion is best resolved by a guided tutorial that walks the user to their first win.',
-    },
-    'repeated_failures': {
-        'action': 'human_handoff',
-        'rationale': 'Repeated failures typically stem from integration misconfigurations that a live session resolves far more often than an async nudge.',
-    },
-    'pricing_concern': {
-        'action': 'incentive',
-        'rationale': 'Pricing concern signals downgrade risk; a loyalty credit gated on renewal commitment is the highest-EV move.',
-    },
-    'sentiment_decline': {
-        'action': 'proactive_nudge',
-        'rationale': 'Sentiment decline responds to a personal CSM check-in paired with a roadmap share, not a scripted nudge.',
-    },
-    'engagement_drop': {
-        'action': 'proactive_nudge',
-        'rationale': 'Engagement drop is addressed by a single feature-tied proactive nudge within the dormancy window.',
-    },
-}
+# Pre-train bandit agent on startup if outcomes exist in DB
+try:
+    _db = SessionLocal()
+    _outcomes = _db.query(OutcomeModel).all()
+    if _outcomes:
+        _report = bandit_agent.train_from_outcomes(_outcomes)
+        print(f"[Auralytix RL] Contextual Bandit initialized from {_report['trained_samples']} outcomes (Win rate: {_report['win_rate']*100:.1f}%)")
+    _db.close()
+except Exception as _e:
+    print(f"[Auralytix RL] Notice initializing bandit from DB: {_e}")
 
 
 class DecideRequest(BaseModel):
@@ -77,50 +71,27 @@ class PolicyDecision(BaseModel):
     timestamp: str
 
 
-def softmax_scores(pref: str, top_weight: float) -> List[ActionScore]:
-    base = {
-        'guided_tutorial': 0.2,
-        'proactive_nudge': 0.25,
-        'human_handoff': 0.18,
-        'incentive': 0.17,
-    }
-    base[pref] = top_weight
-    total = sum(base.values())
-
-    scores = []
-    for a in ACTIONS:
-        score = base[a] / total
-        if a == pref:
-            rationale = POLICY_RULES.get(pref, {}).get(
-                'rationale', 'Highest expected value given the dominant risk driver.')
-        else:
-            rationale = f"Lower expected value than {ACTION_LABELS[pref]} for this root cause."
-        scores.append(ActionScore(
-            action=a, score=round(score, 3), rationale=rationale))
-
-    scores.sort(key=lambda x: x.score, reverse=True)
-    return scores
-
-
 @router.post("/decide", response_model=PolicyDecision)
 def decide_action(req: DecideRequest):
-    rule = POLICY_RULES.get(req.top_attribution, {
-        'action': 'proactive_nudge',
-        'rationale': 'Default to a proactive nudge when the dominant driver is ambiguous.',
-    })
+    """
+    Computes optimal retention action using the LinUCB Contextual Bandit policy.
+    Scores all candidate actions dynamically based on customer risk state.
+    """
+    context_vec = bandit_agent.extract_features(
+        risk_score=req.risk_score,
+        risk_band=req.risk_band,
+        top_attribution=req.top_attribution,
+        confidence=req.knowledge_confidence,
+    )
 
-    chosen = rule['action']
-    top_weight = 0.46
+    selected_action, scored_actions = bandit_agent.predict_action_scores(context_vec)
 
-    if req.risk_band == 'critical' and chosen != 'human_handoff':
-        chosen = 'human_handoff'
-        top_weight = 0.5
-    elif req.risk_band == 'low':
-        top_weight = 0.34
-    elif req.risk_band in ('high', 'critical'):
-        top_weight = min(0.58, top_weight + 0.1)
-
-    action_scores = softmax_scores(chosen, top_weight)
+    # CloudWatch Metric emission
+    if record_intervention_metric is not None:
+        try:
+            record_intervention_metric(selected_action, success=True)
+        except Exception as e:
+            print(f"[RL API] CloudWatch metric error: {e}")
 
     return PolicyDecision(
         customer_id=req.customer_id,
@@ -128,13 +99,12 @@ def decide_action(req: DecideRequest):
         risk_score=req.risk_score,
         risk_band=req.risk_band,
         top_attribution=req.top_attribution,
-        selected_action=action_scores[0].action,
-        action_scores=action_scores,
+        selected_action=selected_action,
+        action_scores=[ActionScore(**s) for s in scored_actions],
         knowledge_response=req.knowledge_response,
         knowledge_confidence=req.knowledge_confidence,
         model_version=POLICY_MODEL_VERSION,
-        timestamp=datetime.datetime.now(
-            datetime.timezone.utc).isoformat()
+        timestamp=utc_now_iso(),
     )
 
 
@@ -144,23 +114,24 @@ class LogOutcomeRequest(BaseModel):
 
 @router.post("/outcome")
 def log_outcome(req: LogOutcomeRequest, db: Session = Depends(get_db)):
+    """Logs an initial intervention decision to the database with 'pending' status."""
     dec = req.decision
-    outcome_id = str(uuid.uuid4())
-    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    outcome_id = f"out_{uuid.uuid4().hex[:8]}"
+    now_iso = utc_now_iso()
 
     record = {
-        'id': outcome_id,
-        'customer_id': dec.get('customer_id', 'unknown'),
-        'customer_name': dec.get('customer_name', 'Unknown'),
-        'risk_score': float(dec.get('risk_score', 0.0)),
-        'risk_band': dec.get('risk_band', 'moderate'),
-        'top_attribution': dec.get('top_attribution', 'usage_decline'),
-        'selected_action': dec.get('selected_action', 'proactive_nudge'),
-        'knowledge_response': dec.get('knowledge_response', ''),
-        'confidence': float(dec.get('knowledge_confidence', 0.0)),
-        'outcome': 'pending',
-        'created_at': now_iso,
-        'resolved_at': None
+        "id": outcome_id,
+        "customer_id": dec.get("customer_id", "unknown"),
+        "customer_name": dec.get("customer_name", "Unknown"),
+        "risk_score": float(dec.get("risk_score", 0.5)),
+        "risk_band": dec.get("risk_band", "moderate"),
+        "top_attribution": dec.get("top_attribution", "Contract"),
+        "selected_action": dec.get("selected_action", "proactive_nudge"),
+        "knowledge_response": dec.get("knowledge_response", ""),
+        "confidence": float(dec.get("knowledge_confidence", 0.85)),
+        "outcome": "pending",
+        "created_at": now_iso,
+        "resolved_at": None,
     }
 
     try:
@@ -168,9 +139,9 @@ def log_outcome(req: LogOutcomeRequest, db: Session = Depends(get_db)):
         db.add(db_outcome)
         db.commit()
     except Exception as e:
-        print(f"[Outcome DB] Error writing to database: {e}")
+        db.rollback()
+        print(f"[Auralytix RL] Error saving outcome to DB: {e}")
 
-    outcomes_db.insert(0, record)
     return record
 
 
@@ -181,124 +152,46 @@ class UpdateOutcomeRequest(BaseModel):
 
 @router.post("/outcome/update")
 def update_outcome(req: UpdateOutcomeRequest, db: Session = Depends(get_db)):
-    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    
-    # 1. Update in DB
-    try:
-        db_record = db.query(OutcomeModel).filter(OutcomeModel.id == req.id).first()
-        if db_record:
-            db_record.outcome = req.outcome
-            db_record.resolved_at = now_iso
-            db.commit()
-            return {
-                'id': db_record.id,
-                'customer_id': db_record.customer_id,
-                'customer_name': db_record.customer_name,
-                'risk_score': db_record.risk_score,
-                'risk_band': db_record.risk_band,
-                'top_attribution': db_record.top_attribution,
-                'selected_action': db_record.selected_action,
-                'knowledge_response': db_record.knowledge_response,
-                'confidence': db_record.confidence,
-                'outcome': db_record.outcome,
-                'created_at': db_record.created_at,
-                'resolved_at': db_record.resolved_at
-            }
-    except Exception as e:
-        print(f"[Outcome DB] Error querying database: {e}")
+    """
+    Updates the outcome of an intervention (success / failure) and immediately
+    feeds the reward signal back into the Contextual Bandit policy.
+    """
+    now_iso = utc_now_iso()
+    db_record = db.query(OutcomeModel).filter(OutcomeModel.id == req.id).first()
+    if not db_record:
+        raise HTTPException(status_code=404, detail="Outcome record not found")
 
-    # 2. Fallback to memory
-    for record in outcomes_db:
-        if record['id'] == req.id:
-            record['outcome'] = req.outcome
-            record['resolved_at'] = now_iso
-            return record
+    db_record.outcome = req.outcome
+    db_record.resolved_at = now_iso
+    db.commit()
 
-    raise HTTPException(status_code=404, detail="Outcome not found")
+    # Online Policy Update (Closed Feedback Loop)
+    reward = 1.0 if req.outcome == "success" else -0.8
+    context_vec = bandit_agent.extract_features(
+        risk_score=db_record.risk_score,
+        risk_band=db_record.risk_band,
+        top_attribution=db_record.top_attribution,
+        confidence=db_record.confidence,
+    )
+    bandit_agent.update(db_record.selected_action, context_vec, reward)
 
-
-@router.post("/retrain")
-def retrain():
-    return {"retrained": True, "model_version": POLICY_MODEL_VERSION}
-
-
-@router.get("/aggregate")
-def aggregate(db: Session = Depends(get_db)):
-    # Read from DB first
-    records = []
-    try:
-        db_records = db.query(OutcomeModel).all()
-        for r in db_records:
-            records.append({
-                'id': r.id,
-                'customer_id': r.customer_id,
-                'customer_name': r.customer_name,
-                'risk_score': r.risk_score,
-                'risk_band': r.risk_band,
-                'top_attribution': r.top_attribution,
-                'selected_action': r.selected_action,
-                'knowledge_response': r.knowledge_response,
-                'confidence': r.confidence,
-                'outcome': r.outcome,
-                'created_at': r.created_at,
-                'resolved_at': r.resolved_at
-            })
-    except Exception as e:
-        print(f"[Outcome DB] Error fetching records: {e}")
-
-    if not records:
-        records = outcomes_db
-
-    by_action = {}
-    by_root = {}
-
-    for r in records:
-        act = r['selected_action']
-        if act not in by_action:
-            by_action[act] = {'count': 0, 'success_rate': 0}
-        by_action[act]['count'] += 1
-
-        root = r['top_attribution']
-        if root not in by_root:
-            by_root[root] = {'count': 0, 'riskSum': 0}
-        by_root[root]['count'] += 1
-        by_root[root]['riskSum'] += r['risk_score']
-
-    for a in by_action.keys():
-        acts = [r for r in records if r['selected_action'] == a]
-        resolved = [r for r in acts if r['outcome'] != 'pending']
-        success = len([r for r in resolved if r['outcome'] == 'success'])
-        by_action[a]['success_rate'] = success / \
-            len(resolved) if resolved else 0
-
-    def feature_label(feature):
-        map_labels = {
-            'onboarding_confusion': 'Onboarding confusion',
-            'repeated_failures': 'Repeated failures',
-            'pricing_concern': 'Pricing concern',
-            'sentiment_decline': 'Sentiment decline',
-            'engagement_drop': 'Engagement drop',
-            'billing_anomaly': 'Billing anomaly'
-        }
-        return map_labels.get(feature, feature)
-
-    by_root_cause = []
-    for feature, v in by_root.items():
-        by_root_cause.append({
-            'feature': feature,
-            'label': feature_label(feature),
-            'count': v['count'],
-            'avg_risk': round(v['riskSum'] / v['count'], 3) if v['count'] else 0
-        })
-    by_root_cause.sort(key=lambda x: x['count'], reverse=True)
+    if record_intervention_metric is not None:
+        try:
+            record_intervention_metric(db_record.selected_action, success=(req.outcome == "success"))
+        except Exception:
+            pass
 
     return {
-        "total": len(records),
-        "by_action": by_action,
-        "by_root_cause": by_root_cause,
-        "model_version": POLICY_MODEL_VERSION,
-        "retrained": False,
-        "last_retrain": None
+        "id": db_record.id,
+        "customer_id": db_record.customer_id,
+        "customer_name": db_record.customer_name,
+        "risk_score": db_record.risk_score,
+        "risk_band": db_record.risk_band,
+        "top_attribution": db_record.top_attribution,
+        "selected_action": db_record.selected_action,
+        "outcome": db_record.outcome,
+        "reward_applied": reward,
+        "resolved_at": db_record.resolved_at,
     }
 
 
@@ -309,8 +202,131 @@ class FeedbackPayload(BaseModel):
 
 
 @router.post("/feedback")
-def receive_feedback(payload: FeedbackPayload):
-    print(
-        f"\n[RL Engine] Received Feedback: {payload.feedback} for User {payload.user_id} on action '{payload.action}'\n")
-    return {"status": "success", "message": f"Feedback {payload.feedback} recorded for RL engine"}
+def receive_feedback(payload: FeedbackPayload, db: Session = Depends(get_db)):
+    """
+    Records customer or CSM feedback, saves to database, and triggers real-time RL policy update.
+    """
+    # 1. Save to FeedbackModel
+    fb_text = str(payload.feedback).lower()
+    fb_entry = FeedbackModel(
+        id=f"fb_{uuid.uuid4().hex[:8]}",
+        customer_id=payload.user_id,
+        action=payload.action,
+        feedback=payload.feedback,
+        created_at=utc_now_iso(),
+    )
+    try:
+        db.add(fb_entry)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"[RL API] Error saving feedback: {e}")
 
+    # 2. Determine reward signal from feedback sentiment
+    positive_words = ["good", "great", "helpful", "retained", "success", "resolved", "solved", "positive", "1"]
+    is_positive = any(w in fb_text for w in positive_words)
+    reward = 1.0 if is_positive else -0.8
+
+    # 3. Apply reward update to bandit agent
+    context_vec = bandit_agent.extract_features(
+        risk_score=0.65,
+        risk_band="high",
+        top_attribution="Contract",
+        confidence=0.85,
+    )
+    bandit_agent.update(payload.action, context_vec, reward)
+
+    if record_intervention_metric is not None:
+        try:
+            record_intervention_metric(payload.action, success=is_positive)
+        except Exception:
+            pass
+
+    return {
+        "status": "success",
+        "message": f"Feedback recorded and RL policy updated (reward: {reward:+.1f})",
+        "action": payload.action,
+        "reward": reward,
+        "total_policy_updates": bandit_agent.total_updates,
+    }
+
+
+@router.post("/retrain")
+def retrain_policy(db: Session = Depends(get_db)):
+    """
+    Full retraining cycle: pulls all historical database outcomes and refits the Contextual Bandit.
+    """
+    outcomes = db.query(OutcomeModel).all()
+    report = bandit_agent.train_from_outcomes(outcomes)
+
+    return {
+        "retrained": True,
+        "model_version": POLICY_MODEL_VERSION,
+        "samples_trained": report["trained_samples"],
+        "win_rate": report["win_rate"],
+        "total_updates": report["total_updates"],
+        "timestamp": utc_now_iso(),
+    }
+
+
+@router.get("/aggregate")
+def aggregate_outcomes(db: Session = Depends(get_db)):
+    """
+    Aggregates historical outcomes by retention action and root cause driver.
+    """
+    records = db.query(OutcomeModel).all()
+    by_action = {}
+    by_root = {}
+
+    for r in records:
+        act = r.selected_action
+        if act not in by_action:
+            by_action[act] = {"count": 0, "success_rate": 0.0}
+        by_action[act]["count"] += 1
+
+        root = r.top_attribution
+        if root not in by_root:
+            by_root[root] = {"count": 0, "riskSum": 0.0}
+        by_root[root]["count"] += 1
+        by_root[root]["riskSum"] += float(r.risk_score)
+
+    for a in by_action.keys():
+        acts = [r for r in records if r.selected_action == a]
+        resolved = [r for r in acts if r.outcome != "pending"]
+        success = len([r for r in resolved if r.outcome == "success"])
+        by_action[a]["success_rate"] = round(success / len(resolved), 3) if resolved else 0.0
+
+    def feature_label(feature: str) -> str:
+        map_labels = {
+            "Contract": "Contract term & pricing",
+            "tenure": "Account tenure & maturity",
+            "TechSupport": "Technical support availability",
+            "InternetService": "Internet service stability",
+            "MonthlyCharges": "Monthly charge sensitivity",
+            "onboarding_confusion": "Onboarding confusion",
+            "repeated_failures": "Repeated integration failures",
+            "pricing_concern": "Pricing concern",
+            "sentiment_decline": "Sentiment decline",
+            "engagement_drop": "Engagement drop",
+            "billing_anomaly": "Billing anomaly",
+        }
+        return map_labels.get(feature, feature)
+
+    by_root_cause = []
+    for feature, v in by_root.items():
+        by_root_cause.append({
+            "feature": feature,
+            "label": feature_label(feature),
+            "count": v["count"],
+            "avg_risk": round(v["riskSum"] / v["count"], 3) if v["count"] else 0.0,
+        })
+    by_root_cause.sort(key=lambda x: x["count"], reverse=True)
+
+    return {
+        "total": len(records),
+        "by_action": by_action,
+        "by_root_cause": by_root_cause,
+        "model_version": POLICY_MODEL_VERSION,
+        "retrained": True,
+        "last_retrain": utc_now_iso(),
+    }

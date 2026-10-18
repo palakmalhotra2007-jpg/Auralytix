@@ -7,7 +7,6 @@ import type {
   PolicyDecision,
   RiskBand,
 } from './types';
-import { supabase, supabaseAvailable } from './supabase';
 import { API_BASE } from './apiConfig';
 
 // ---- P3 - Action Policy & Feedback Loop ----
@@ -85,11 +84,12 @@ function decideLocal(
   customerName: string,
   riskScore: number,
   riskBand: RiskBand,
-  topAttr: Attribution,
-  knowledgeResponse: string,
-  knowledgeConfidence: number
+  topAttr?: Attribution,
+  knowledgeResponse: string = '',
+  knowledgeConfidence: number = 0.8
 ): PolicyDecision {
-  const rule = POLICY_RULES[topAttr.feature] ?? {
+  const feat = topAttr?.feature || 'pricing_concern';
+  const rule = POLICY_RULES[feat] ?? {
     action: 'proactive_nudge' as ActionType,
     rationale: 'Default to a proactive nudge when the dominant driver is ambiguous.',
   };
@@ -109,7 +109,7 @@ function decideLocal(
     customer_name: customerName,
     risk_score: riskScore,
     risk_band: riskBand,
-    top_attribution: topAttr.feature,
+    top_attribution: feat,
     selected_action: action_scores[0].action,
     action_scores,
     knowledge_response: knowledgeResponse,
@@ -124,10 +124,11 @@ export async function decide(
   customerName: string,
   riskScore: number,
   riskBand: RiskBand,
-  topAttr: Attribution,
-  knowledgeResponse: string,
-  knowledgeConfidence: number
+  topAttr?: Attribution,
+  knowledgeResponse: string = '',
+  knowledgeConfidence: number = 0.8
 ): Promise<PolicyDecision> {
+  const feat = topAttr?.feature || 'pricing_concern';
   try {
     const res = await fetch(`${API_BASE}/policy/decide`, {
       method: 'POST',
@@ -137,7 +138,7 @@ export async function decide(
         customer_name: customerName,
         risk_score: riskScore,
         risk_band: riskBand,
-        top_attribution: topAttr.feature,
+        top_attribution: feat,
         knowledge_response: knowledgeResponse,
         knowledge_confidence: knowledgeConfidence,
       }),
@@ -167,29 +168,7 @@ export async function logDecision(decision: PolicyDecision): Promise<OutcomeReco
     if (res.ok) return mapRow(await res.json());
   } catch { /* fall through */ }
 
-  // Supabase fallback
-  if (supabaseAvailable) {
-    const row = {
-      customer_id: decision.customer_id,
-      customer_name: decision.customer_name,
-      risk_score: decision.risk_score,
-      risk_band: decision.risk_band,
-      top_attribution: decision.top_attribution,
-      selected_action: decision.selected_action,
-      knowledge_response: decision.knowledge_response,
-      confidence: decision.knowledge_confidence,
-      outcome: 'pending' as const,
-    };
-    const { data, error } = await supabase
-      .from('outcomes')
-      .insert(row)
-      .select()
-      .single();
-    if (error) throw error;
-    return mapRow(data);
-  }
-
-  // In-memory fallback when neither backend nor Supabase is available
+  // In-memory fallback when backend API is unreachable
   const record: OutcomeRecord = {
     id: crypto.randomUUID(),
     customer_id: decision.customer_id,
@@ -308,15 +287,6 @@ export async function listOutcomes(): Promise<OutcomeRecord[]> {
     }
   } catch { /* fall through */ }
 
-  if (supabaseAvailable) {
-    const { data, error } = await supabase
-      .from('outcomes')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data ?? []).map(mapRow);
-  }
-
   return inMemoryOutcomes;
 }
 
@@ -333,17 +303,6 @@ export async function logOutcome(
     });
     if (res.ok) return mapRow(await res.json());
   } catch { /* fall through */ }
-
-  if (supabaseAvailable) {
-    const { data, error } = await supabase
-      .from('outcomes')
-      .update({ outcome, resolved_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return mapRow(data);
-  }
 
   // In-memory fallback
   const rec = inMemoryOutcomes.find((r) => r.id === id);

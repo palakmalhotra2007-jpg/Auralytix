@@ -63,8 +63,11 @@ def model_to_schema(c: CustomerModel) -> dict:
         "lastActiveDays": c.last_active_days,
         "last_active_days": c.last_active_days,
         "signals": signals,
+        "risk_score": round(float(getattr(c, "risk_score", 0.5) or 0.5), 4),
+        "risk_band": getattr(c, "risk_band", "moderate") or "moderate",
         "created_at": c.created_at
     }
+
 
 
 @router.get("", response_model=List[dict])
