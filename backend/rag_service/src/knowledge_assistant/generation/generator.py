@@ -2,7 +2,10 @@ import os
 import re
 from typing import List, Dict, Any
 from dotenv import load_dotenv
-from openai import OpenAI
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
 
 
 class Generator:
@@ -10,14 +13,16 @@ class Generator:
         load_dotenv()
         api_key = os.getenv("GROQ_API_KEY")
 
-        self.is_mock = not api_key or api_key == "dummy"
+        self.is_mock = not api_key or api_key == "dummy" or OpenAI is None
 
-        if not self.is_mock:
+        if not self.is_mock and OpenAI is not None:
             # Point the OpenAI client to Groq's base URL
             self.client = OpenAI(
                 api_key=api_key,
                 base_url="https://api.groq.com/openai/v1"
             )
+        else:
+            self.is_mock = True
         self.model = "llama-3.3-70b-versatile"
 
     def generate_response(self, query: str, retrieved_chunks: List[Dict[str, Any]], confidence_threshold: float = 0.4) -> Dict[str, Any]:

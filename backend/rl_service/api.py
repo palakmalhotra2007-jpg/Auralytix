@@ -344,7 +344,7 @@ def list_outcomes(limit: int = 50, db: Session = Depends(get_db)):
     return [
         {
             "id": r.id,
-            "decision_id": r.decision_id,
+            "decision_id": r.id,
             "customer_id": r.customer_id,
             "customer_name": r.customer_name,
             "risk_score": float(r.risk_score),
@@ -352,11 +352,13 @@ def list_outcomes(limit: int = 50, db: Session = Depends(get_db)):
             "top_attribution": r.top_attribution,
             "selected_action": r.selected_action,
             "action": r.selected_action,
+            "knowledge_response": r.knowledge_response or "",
+            "confidence": float(r.confidence or 0.85),
             "outcome": r.outcome,
             "resolved_at": r.resolved_at,
             "created_at": r.created_at,
-            "reward_applied": r.reward_applied,
         }
         for r in records
     ]
+
 
