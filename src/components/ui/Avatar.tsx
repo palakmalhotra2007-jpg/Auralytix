@@ -1,10 +1,13 @@
-export function Avatar({ name, hue, size = 40 }: { name: string; hue: number; size?: number }) {
-  const initials = name
+export function Avatar({ name, hue, size = 40 }: { name?: string; hue?: number; size?: number }) {
+  const safeName = name || 'Customer';
+  const safeHue = hue ?? 180;
+  const initials = safeName
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .slice(0, 2)
     .join('')
-    .toUpperCase();
+    .toUpperCase() || 'C';
   return (
     <div
       className="flex shrink-0 items-center justify-center rounded-full font-display text-sm font-semibold text-white ring-1 ring-white/10"

@@ -15,13 +15,17 @@ export function DashboardView({ onNavigate }: { onNavigate: (v: ViewKey) => void
     const scored = rows.filter((r) => r.score);
     const atRisk = scored.filter((r) => r.score!.risk_band === 'high' || r.score!.risk_band === 'critical');
     const critical = scored.filter((r) => r.score!.risk_band === 'critical');
-    const avgRisk = scored.length ? scored.reduce((s, r) => s + r.score!.risk_score, 0) / scored.length : 0;
+    const avgRisk = scored.length ? scored.reduce((s, r) => s + (r.score?.risk_score || 0), 0) / scored.length : 0;
     const arrValue = atRisk.reduce((s, r) => {
-      const c = customers.find((c) => c.id === r.customerId)!;
-      return s + c.plan_value;
+      const c = customers.find((c) => c.id === r.customerId);
+      return s + (c?.plan_value || 0);
     }, 0);
     const bandCounts: Record<RiskBand, number> = { low: 0, moderate: 0, high: 0, critical: 0 };
-    scored.forEach((r) => (bandCounts[r.score!.risk_band] += 1));
+    scored.forEach((r) => {
+      if (r.score?.risk_band && bandCounts[r.score.risk_band] !== undefined) {
+        bandCounts[r.score.risk_band] += 1;
+      }
+    });
     const topDrivers: Record<string, number> = {};
     scored.forEach((r) => {
       const topAttr = r.score?.attributions?.[0];
@@ -153,11 +157,14 @@ export function DashboardView({ onNavigate }: { onNavigate: (v: ViewKey) => void
           <p className="mt-1 text-xs text-slate-500">Highest-risk customers, sorted descending</p>
           <div className="mt-4 space-y-2">
             {stats.atRisk
-              .sort((a, b) => b.score!.risk_score - a.score!.risk_score)
+              .slice()
+              .sort((a, b) => (b.score?.risk_score ?? 0) - (a.score?.risk_score ?? 0))
               .slice(0, 5)
               .map((r, i) => {
-                const c = customers.find((c) => c.id === r.customerId)!;
-                const m = bandMeta(r.score!.risk_band);
+                const c = customers.find((c) => c.id === r.customerId);
+                if (!c) return null;
+                const band = r.score?.risk_band || 'low';
+                const m = bandMeta(band);
                 const topAttr = r.score?.attributions?.[0];
                 const driver = featureMeta(topAttr?.feature);
                 return (
@@ -167,7 +174,7 @@ export function DashboardView({ onNavigate }: { onNavigate: (v: ViewKey) => void
                     className="group flex w-full animate-fadeUp items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3 text-left transition hover:border-white/10 hover:bg-white/5"
                     style={{ animationDelay: `${i * 80}ms` }}
                   >
-                    <Avatar name={c.name} hue={c.avatarHue} size={32} />
+                    <Avatar name={c.name || 'Account'} hue={c.avatarHue || 180} size={32} />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium text-slate-200">{c.name}</div>
                       <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
@@ -175,8 +182,8 @@ export function DashboardView({ onNavigate }: { onNavigate: (v: ViewKey) => void
                       </div>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className={`font-display text-sm font-semibold ${m.text}`}>{fmtPct(r.score!.risk_score, 0)}</span>
-                      <RiskBandPill band={r.score!.risk_band} />
+                      <span className={`font-display text-sm font-semibold ${m.text}`}>{fmtPct(r.score?.risk_score ?? 0, 0)}</span>
+                      <RiskBandPill band={band} />
                     </div>
                   </button>
                 );

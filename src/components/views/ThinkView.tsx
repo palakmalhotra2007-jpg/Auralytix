@@ -37,7 +37,7 @@ export function ThinkView({ initialCustomerId }: { initialCustomerId?: string })
   const [error, setError] = useState<string | null>(null);
   const [outcomeId, setOutcomeId] = useState<string | null>(null);
 
-  const customer = useMemo(() => customers.find((c) => c.id === customerId)!, [customerId]);
+  const customer = useMemo(() => customers.find((c) => c.id === customerId) || customers[0], [customerId]);
 
   function setStage(idx: number, status: AnalysisStage['status']) {
     setStages((prev) => {
