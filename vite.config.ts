@@ -22,4 +22,15 @@ export default defineConfig({
   optimizeDeps: {
     include: ['lucide-react'],
   },
+  build: {
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
+          'lucide': ['lucide-react'],
+        },
+      },
+    },
+  },
 });

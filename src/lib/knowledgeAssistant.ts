@@ -8,43 +8,44 @@ import { API_BASE } from './apiConfig';
 
 export const KNOWLEDGE_MODEL_VERSION = 'pulse-llm-lora-v0.9.3';
 
-const KB_ARTICLES: Record<string, { docs: { doc_id: string; title: string; snippet: string; score: number }[]; response: string }> = {
+const KB_ARTICLES: Record<string, { docs: RetrievedDoc[]; response: string }> = {
   onboarding_confusion: {
     docs: [
-      { doc_id: 'KB-101', title: 'Product Onboarding & Quickstart Guide', snippet: 'Step 3 requires OAuth token generation. 42% of stalled users report UI confusion here.', score: 0.94 },
-      { doc_id: 'KB-104', title: 'Interactive Product Tours Setup', snippet: 'Enabling in-app walkthrough modals boosts initial retention by 31%.', score: 0.89 },
+      { id: 'KB-101', title: 'Product Onboarding & Quickstart Guide', source: 'Knowledge Base', snippet: 'Step 3 requires OAuth token generation. 42% of stalled users report UI confusion here.', relevance: 0.94, highlights: ['onboarding', 'token'] },
+      { id: 'KB-104', title: 'Interactive Product Tours Setup', source: 'Knowledge Base', snippet: 'Enabling in-app walkthrough modals boosts initial retention by 31%.', relevance: 0.89, highlights: ['walkthrough', 'retention'] },
     ],
     response: 'User exhibits stalled onboarding progression at step 3. Recommend triggering an interactive onboarding walkthrough and dispatching the technical Quickstart checklist.',
   },
   repeated_failures: {
     docs: [
-      { doc_id: 'KB-208', title: 'Webhook Timeout & Rate Limit Protocols', snippet: 'Repeated 504 and 429 errors typically indicate unbatched webhook subscriptions.', score: 0.96 },
-      { doc_id: 'KB-312', title: 'Tier-1 Escalation Workflows', snippet: 'Accounts encountering >3 weekly API faults should receive immediate white-glove human handoff.', score: 0.92 },
+      { id: 'KB-208', title: 'Webhook Timeout & Rate Limit Protocols', source: 'Technical Docs', snippet: 'Repeated 504 and 429 errors typically indicate unbatched webhook subscriptions.', relevance: 0.96, highlights: ['504', 'timeout'] },
+      { id: 'KB-312', title: 'Tier-1 Escalation Workflows', source: 'Support Playbook', snippet: 'Accounts encountering >3 weekly API faults should receive immediate white-glove human handoff.', relevance: 0.92, highlights: ['escalation', 'handoff'] },
     ],
     response: 'Telemetry detects repeated integration timeouts and API failures. Recommended intervention is immediate senior technical engineer handoff and webhook payload inspection.',
   },
   pricing_concern: {
     docs: [
-      { doc_id: 'KB-401', title: 'Contract Renewal & Loyalty Discount Schedules', snippet: 'Accounts flagging billing anomalies or price sensitivity are eligible for 15% annual commitment credits.', score: 0.93 },
-      { doc_id: 'KB-405', title: 'Seat Optimization vs Downgrade Playbook', snippet: 'Audit inactive seat counts to restructure billing before contract churn occurs.', score: 0.88 },
+      { id: 'KB-401', title: 'Contract Renewal & Loyalty Discount Schedules', source: 'Billing Playbook', snippet: 'Accounts flagging billing anomalies or price sensitivity are eligible for 15% annual commitment credits.', relevance: 0.93, highlights: ['discount', 'renewal'] },
+      { id: 'KB-405', title: 'Seat Optimization vs Downgrade Playbook', source: 'Billing Playbook', snippet: 'Audit inactive seat counts to restructure billing before contract churn occurs.', relevance: 0.88, highlights: ['seat optimization'] },
     ],
     response: 'Billing signals show pricing sensitivity and downgrade inquiry. Recommended intervention is issuing a tailored loyalty credit gated on annual contract renewal.',
   },
   sentiment_decline: {
     docs: [
-      { doc_id: 'KB-502', title: 'Executive Sponsor Outreach Matrix', snippet: 'Negative sentiment velocity exceeding 20% over 14 days requires CSM roadmap briefing.', score: 0.95 },
-      { doc_id: 'KB-515', title: 'Feature Request Status & Escalations', snippet: 'Transparent updates on in-progress customer tickets consistently recover CSAT scores.', score: 0.90 },
+      { id: 'KB-502', title: 'Executive Sponsor Outreach Matrix', source: 'CSM Guidelines', snippet: 'Negative sentiment velocity exceeding 20% over 14 days requires CSM roadmap briefing.', relevance: 0.95, highlights: ['sentiment', 'CSM'] },
+      { id: 'KB-515', title: 'Feature Request Status & Escalations', source: 'Product Ops', snippet: 'Transparent updates on in-progress customer tickets consistently recover CSAT scores.', relevance: 0.90, highlights: ['CSAT', 'escalation'] },
     ],
     response: 'Customer sentiment metrics indicate frustration following unresolved support tickets. Recommended intervention is direct CSM executive check-in with roadmap preview.',
   },
   engagement_drop: {
     docs: [
-      { doc_id: 'KB-601', title: 'Re-engagement Triggers & Feature Nudges', snippet: 'Login drops >40% in a 30-day window respond best to contextual feature-specific nudge emails.', score: 0.91 },
-      { doc_id: 'KB-609', title: 'Collaboration & Team Workspace Activation', snippet: 'Inviting secondary team members increases retention durability by 2.8x.', score: 0.87 },
+      { id: 'KB-601', title: 'Re-engagement Triggers & Feature Nudges', source: 'Lifecycle Marketing', snippet: 'Login drops >40% in a 30-day window respond best to contextual feature-specific nudge emails.', relevance: 0.91, highlights: ['re-engagement', 'nudges'] },
+      { id: 'KB-609', title: 'Collaboration & Team Workspace Activation', source: 'Product Analytics', snippet: 'Inviting secondary team members increases retention durability by 2.8x.', relevance: 0.87, highlights: ['activation', 'workspace'] },
     ],
     response: 'Customer login frequency has declined sharply over the past 14 days. Recommended intervention is an automated proactive nudge highlighting newly shipped collaboration tools.',
   },
 };
+
 
 export async function knowledgeRespond(req: KnowledgeRequest): Promise<KnowledgeResponse> {
   try {

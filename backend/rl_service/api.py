@@ -43,12 +43,12 @@ except Exception as _e:
 
 class DecideRequest(BaseModel):
     customer_id: str
-    customer_name: str
-    risk_score: float
-    risk_band: str
-    top_attribution: str
-    knowledge_response: str
-    knowledge_confidence: float
+    customer_name: Optional[str] = "Customer"
+    risk_score: Optional[float] = 0.5
+    risk_band: Optional[str] = "moderate"
+    top_attribution: Optional[str] = "Contract"
+    knowledge_response: Optional[str] = ""
+    knowledge_confidence: Optional[float] = 0.8
 
 
 class ActionScore(BaseModel):
@@ -196,8 +196,9 @@ def update_outcome(req: UpdateOutcomeRequest, db: Session = Depends(get_db)):
 
 
 class FeedbackPayload(BaseModel):
-    user_id: str
-    action: str
+    user_id: Optional[str] = None
+    customer_id: Optional[str] = None
+    action: Optional[str] = "intervention"
     feedback: str
 
 
@@ -206,12 +207,14 @@ def receive_feedback(payload: FeedbackPayload, db: Session = Depends(get_db)):
     """
     Records customer or CSM feedback, saves to database, and triggers real-time RL policy update.
     """
+    cid = payload.user_id or payload.customer_id or "c_unknown"
+    act = payload.action or "intervention"
     # 1. Save to FeedbackModel
     fb_text = str(payload.feedback).lower()
     fb_entry = FeedbackModel(
         id=f"fb_{uuid.uuid4().hex[:8]}",
-        customer_id=payload.user_id,
-        action=payload.action,
+        customer_id=cid,
+        action=act,
         feedback=payload.feedback,
         created_at=utc_now_iso(),
     )
@@ -330,3 +333,30 @@ def aggregate_outcomes(db: Session = Depends(get_db)):
         "retrained": True,
         "last_retrain": utc_now_iso(),
     }
+
+
+@router.get("/outcomes")
+def list_outcomes(limit: int = 50, db: Session = Depends(get_db)):
+    """
+    Lists recent logged customer intervention decisions and outcomes.
+    """
+    records = db.query(OutcomeModel).order_by(OutcomeModel.created_at.desc()).limit(limit).all()
+    return [
+        {
+            "id": r.id,
+            "decision_id": r.decision_id,
+            "customer_id": r.customer_id,
+            "customer_name": r.customer_name,
+            "risk_score": float(r.risk_score),
+            "risk_band": r.risk_band,
+            "top_attribution": r.top_attribution,
+            "selected_action": r.selected_action,
+            "action": r.selected_action,
+            "outcome": r.outcome,
+            "resolved_at": r.resolved_at,
+            "created_at": r.created_at,
+            "reward_applied": r.reward_applied,
+        }
+        for r in records
+    ]
+

@@ -1,9 +1,6 @@
 import os
 from typing import List, Dict, Any
 from dotenv import load_dotenv
-from qdrant_client import QdrantClient
-
-from knowledge_assistant.ingestion.embedder import DocumentEmbedder
 
 # Global instances for lazy loading so we don't reload the model on every query
 _embedder = None
@@ -13,17 +10,27 @@ _qdrant_client = None
 def get_embedder():
     global _embedder
     if _embedder is None:
-        _embedder = DocumentEmbedder()
+        try:
+            from knowledge_assistant.ingestion.embedder import DocumentEmbedder
+            _embedder = DocumentEmbedder()
+        except Exception as e:
+            print(f"[RAG Embedder] Notice: sentence-transformers not available ({e}).")
+            _embedder = None
     return _embedder
 
 
 def get_qdrant_client():
     global _qdrant_client
     if _qdrant_client is None:
-        load_dotenv()
-        host = os.getenv("QDRANT_HOST", "localhost")
-        port = int(os.getenv("QDRANT_PORT", 6333))
-        _qdrant_client = QdrantClient(host=host, port=port)
+        try:
+            from qdrant_client import QdrantClient
+            load_dotenv()
+            host = os.getenv("QDRANT_HOST", "localhost")
+            port = int(os.getenv("QDRANT_PORT", 6333))
+            _qdrant_client = QdrantClient(host=host, port=port)
+        except Exception as e:
+            print(f"[RAG Qdrant] Notice: Qdrant client unavailable ({e}). Using local markdown documentation fallback.")
+            _qdrant_client = None
     return _qdrant_client
 
 

@@ -385,18 +385,18 @@ export function featureLabel(feature: string): string {
 
 function mapRow(r: Record<string, unknown>): OutcomeRecord {
   return {
-    id: r.id as string,
-    customer_id: r.customer_id as string,
-    customer_name: r.customer_name as string,
-    risk_score: Number(r.risk_score),
-    risk_band: r.risk_band as RiskBand,
-    top_attribution: r.top_attribution as string,
-    selected_action: r.selected_action as ActionType,
-    knowledge_response: r.knowledge_response as string,
-    confidence: Number(r.confidence),
-    outcome: r.outcome as 'success' | 'failure' | 'pending',
-    created_at: r.created_at as string,
-    resolved_at: r.resolved_at as string | null,
+    id: (r.id || r.decision_id || String(Math.random())) as string,
+    customer_id: (r.customer_id || '') as string,
+    customer_name: (r.customer_name || 'Customer') as string,
+    risk_score: Number(r.risk_score || 0),
+    risk_band: (r.risk_band || 'moderate') as RiskBand,
+    top_attribution: (r.top_attribution || 'Contract') as string,
+    selected_action: (r.selected_action || r.action || 'guided_tutorial') as ActionType,
+    knowledge_response: (r.knowledge_response || '') as string,
+    confidence: Number(r.confidence || 0.85),
+    outcome: (r.outcome || 'pending') as 'success' | 'failure' | 'pending',
+    created_at: (r.created_at || new Date().toISOString()) as string,
+    resolved_at: (r.resolved_at || null) as string | null,
   };
 }
 

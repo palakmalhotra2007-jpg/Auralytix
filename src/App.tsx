@@ -1,13 +1,25 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Sidebar, MobileNav, type ViewKey } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
 import { DashboardView } from '@/components/views/DashboardView';
-import { ThinkView } from '@/components/views/ThinkView';
-import { CustomersView } from '@/components/views/CustomersView';
-import { OutcomesView } from '@/components/views/OutcomesView';
-import { HealthView } from '@/components/views/HealthView';
-import { NeuralView } from '@/components/views/NeuralView';
-import { ReinforcementView } from '@/components/views/ReinforcementView';
+
+const ThinkView = lazy(() => import('@/components/views/ThinkView').then(m => ({ default: m.ThinkView })));
+const CustomersView = lazy(() => import('@/components/views/CustomersView').then(m => ({ default: m.CustomersView })));
+const OutcomesView = lazy(() => import('@/components/views/OutcomesView').then(m => ({ default: m.OutcomesView })));
+const HealthView = lazy(() => import('@/components/views/HealthView').then(m => ({ default: m.HealthView })));
+const NeuralView = lazy(() => import('@/components/views/NeuralView').then(m => ({ default: m.NeuralView })));
+const ReinforcementView = lazy(() => import('@/components/views/ReinforcementView').then(m => ({ default: m.ReinforcementView })));
+
+function ViewFallback() {
+  return (
+    <div className="flex flex-1 items-center justify-center p-12">
+      <div className="flex items-center gap-3 rounded-2xl border border-white/5 bg-[#0f1722]/60 px-5 py-3 backdrop-blur-xl shadow-lg">
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
+        <span className="text-sm font-medium text-slate-300">Loading view...</span>
+      </div>
+    </div>
+  );
+}
 
 const META: Record<ViewKey, { title: string; subtitle: string }> = {
   dashboard: { title: 'Overview', subtitle: 'Customer intelligence across your book of business' },
@@ -51,15 +63,17 @@ function App() {
         <div className="w-full flex-1 flex flex-col px-4 py-6 sm:px-6 lg:px-8">
           <Topbar title={meta.title} subtitle={meta.subtitle} busy={busy} />
           <main className="mt-6 flex-1 flex flex-col">
-            {view === 'dashboard' && <DashboardView onNavigate={navigate} />}
-            {view === 'think' && <ThinkView initialCustomerId={analyzeId} />}
-            {view === 'customers' && (
-              <CustomersView onAnalyze={analyzeCustomer} />
-            )}
-            {view === 'outcomes' && <OutcomesView />}
-            {view === 'health' && <HealthView />}
-            {view === 'neural' && <NeuralView />}
-            {view === 'reinforcement' && <ReinforcementView />}
+            <Suspense fallback={<ViewFallback />}>
+              {view === 'dashboard' && <DashboardView onNavigate={navigate} />}
+              {view === 'think' && <ThinkView initialCustomerId={analyzeId} />}
+              {view === 'customers' && (
+                <CustomersView onAnalyze={analyzeCustomer} />
+              )}
+              {view === 'outcomes' && <OutcomesView />}
+              {view === 'health' && <HealthView />}
+              {view === 'neural' && <NeuralView />}
+              {view === 'reinforcement' && <ReinforcementView />}
+            </Suspense>
           </main>
         </div>
       </div>

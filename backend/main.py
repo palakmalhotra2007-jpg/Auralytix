@@ -65,8 +65,10 @@ if rag_app is not None:
 # 4. Mount SHAP Risk & Attribution Engine endpoints under /shap
 app.mount("/shap", shap_app)
 
-# 5. Include RL Action Policy router under /policy
+# 5. Include RL Action Policy router under /policy and /rl
 app.include_router(rl_router, prefix="/policy")
+app.include_router(rl_router, prefix="/rl")
+
 
 
 @app.get("/health")

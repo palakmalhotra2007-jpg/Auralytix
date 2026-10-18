@@ -20,8 +20,10 @@ app.add_middleware(
 
 
 class KnowledgeRequest(BaseModel):
-    user_id: str
-    issue_text: str
+    user_id: str = "default_user"
+    customer_id: str = ""
+    issue_text: str = ""
+    query: str = ""
 
 
 class RetrievedDoc(BaseModel):
@@ -30,7 +32,7 @@ class RetrievedDoc(BaseModel):
     snippet: str
     relevance: float
     source: str
-    highlights: List[str]
+    highlights: List[str] = []
 
 
 class KnowledgeResponse(BaseModel):
@@ -48,8 +50,9 @@ def health_check():
 @app.post("/knowledge/respond", response_model=KnowledgeResponse)
 def respond_to_issue(request: KnowledgeRequest):
     try:
+        query_text = request.issue_text or request.query or "Customer inquiry"
         # 1. Retrieve relevant chunks
-        chunks = retrieve(request.issue_text, top_k=3)
+        chunks = retrieve(query_text, top_k=3)
 
         # Format the retrieved docs for the response
         retrieved_docs = []
