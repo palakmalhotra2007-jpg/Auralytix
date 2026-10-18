@@ -483,9 +483,9 @@ function RetrievedDocRow({ doc, index }: { doc: KnowledgeResponse['retrieved_doc
         </div>
       </div>
       <p className="mt-2 text-xs leading-relaxed text-slate-400">
-        {highlightSnippet(doc.snippet, doc.highlights)}
+        {highlightSnippet(doc?.snippet || '', doc?.highlights || [])}
       </p>
-      {doc.highlights.length > 0 && (
+      {(doc?.highlights?.length ?? 0) > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {doc.highlights.map((h) => (
             <span key={h} className="rounded-md bg-pulse-500/10 px-1.5 py-0.5 text-[10px] text-pulse-300">
@@ -498,16 +498,23 @@ function RetrievedDocRow({ doc, index }: { doc: KnowledgeResponse['retrieved_doc
   );
 }
 
-function highlightSnippet(text: string, terms: string[]) {
-  if (!terms.length) return text;
-  const parts = text.split(new RegExp(`(${terms.join('|')})`, 'gi'));
-  return parts.map((p, i) =>
-    terms.includes(p.toLowerCase()) ? (
-      <mark key={i} className="rounded bg-pulse-500/20 px-0.5 text-pulse-100">{p}</mark>
-    ) : (
-      <span key={i}>{p}</span>
-    )
-  );
+function highlightSnippet(text?: string, terms?: string[]) {
+  if (!text) return '';
+  if (!terms || !Array.isArray(terms) || terms.length === 0) return text;
+  const validTerms = terms.filter(Boolean);
+  if (validTerms.length === 0) return text;
+  try {
+    const parts = text.split(new RegExp(`(${validTerms.join('|')})`, 'gi'));
+    return parts.map((p, i) =>
+      validTerms.map(t => t.toLowerCase()).includes(p.toLowerCase()) ? (
+        <mark key={i} className="rounded bg-pulse-500/20 px-0.5 text-pulse-100">{p}</mark>
+      ) : (
+        <span key={i}>{p}</span>
+      )
+    );
+  } catch {
+    return text;
+  }
 }
 
 // ---------------- Policy panel ----------------
